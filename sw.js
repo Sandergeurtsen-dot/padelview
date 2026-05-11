@@ -1,4 +1,4 @@
-const CACHE_NAME = "padel-motion-coach-v1";
+const CACHE_NAME = "padel-motion-coach-v2";
 const APP_FILES = [
   "./",
   "./index.html",
@@ -9,6 +9,7 @@ const APP_FILES = [
 ];
 
 self.addEventListener("install", (event) => {
+  self.skipWaiting();
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_FILES)));
 });
 
@@ -22,6 +23,7 @@ self.addEventListener("activate", (event) => {
       ),
     ),
   );
+  self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
@@ -29,12 +31,31 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  const requestUrl = new URL(event.request.url);
+  const sameOrigin = requestUrl.origin === self.location.origin;
+
+  if (!sameOrigin) {
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) {
-        return cached;
-      }
-      return fetch(event.request);
-    }),
+    fetch(event.request)
+      .then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return response;
+      })
+      .catch(async () => {
+        const cached = await caches.match(event.request);
+        if (cached) {
+          return cached;
+        }
+
+        if (event.request.mode === "navigate") {
+          return caches.match("./index.html");
+        }
+
+        throw new Error("Request failed and no cache entry was found.");
+      }),
   );
 });
