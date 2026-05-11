@@ -7,6 +7,10 @@ Mobiele webapp voor live padel analyse met:
 - skeletlijnen over schouders, armen, heupen en benen
 - gewrichtshoeken per ledemaat
 - heuristische herkenning van `forehand`, `backhand`, `volley` en `overhead / smash`
+- trainingssessies met slagregistratie per slagsoort
+- telling van goede versus minder goede slagen per sessie
+- optionele sessie-opname die je na afloop kunt downloaden
+- coachrapport met patronen, zwakke punten en trainingstips
 - live coachingregels op basis van hoekzones
 
 ## Lokaal starten

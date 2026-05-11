@@ -94,6 +94,18 @@
             <button id="switchButton" class="secondary-button" disabled>
               Wissel camera
             </button>
+            <button id="sessionStartButton" class="primary-button" disabled>
+              Start sessie
+            </button>
+            <button id="sessionStopButton" class="secondary-button" disabled>
+              Eindig sessie
+            </button>
+            <button id="recordButton" class="secondary-button" disabled>
+              Start opname
+            </button>
+            <button id="downloadButton" class="secondary-button" disabled>
+              Download opname
+            </button>
             <label class="control">
               <span>Speelhand</span>
               <select id="handednessSelect">
@@ -154,6 +166,44 @@
             </div>
           </article>
 
+          <article class="insight-card session-card">
+            <div class="card-heading">
+              <p class="tiny-label">Sessie</p>
+              <strong id="sessionStatusText">Nog niet gestart</strong>
+            </div>
+            <div class="session-hero">
+              <div class="session-metric">
+                <span class="metric-label">Tijd</span>
+                <strong id="sessionTimerValue">00:00</strong>
+              </div>
+              <div class="session-metric">
+                <span class="metric-label">Opname</span>
+                <strong id="recordingStatusText">Uit</strong>
+              </div>
+              <div class="session-metric">
+                <span class="metric-label">Totaal</span>
+                <strong id="sessionTotalValue">0</strong>
+              </div>
+            </div>
+            <div class="session-summary-grid">
+              <div class="session-summary-box">
+                <span class="metric-label">Goed</span>
+                <strong id="sessionGoodValue">0</strong>
+              </div>
+              <div class="session-summary-box">
+                <span class="metric-label">Niet goed</span>
+                <strong id="sessionBadValue">0</strong>
+              </div>
+              <div class="session-summary-box">
+                <span class="metric-label">Goedratio</span>
+                <strong id="sessionQualityValue">--</strong>
+              </div>
+            </div>
+            <p id="sessionSummaryText" class="support-copy">
+              Start een sessie om je slagen te tellen, te beoordelen en door de coach te laten samenvatten.
+            </p>
+          </article>
+
           <article class="insight-card feedback-card">
             <div class="card-heading">
               <p class="tiny-label">Coaching</p>
@@ -163,6 +213,70 @@
               <li>Houd de hele speler in beeld voor een complete meting.</li>
               <li>Gebruik bij voorkeur de achtercamera voor meer detail.</li>
               <li>De analyse is bedoeld als trainingshulp, niet als medische beoordeling.</li>
+            </ul>
+          </article>
+
+          <article class="insight-card">
+            <div class="card-heading">
+              <p class="tiny-label">Sessie statistieken</p>
+              <strong>Per slagsoort</strong>
+            </div>
+            <div id="sessionStatsGrid" class="stats-grid">
+              <div class="stroke-row">
+                <div class="stroke-row-main">
+                  <strong>Forehand</strong>
+                  <span>0 goed · 0 niet goed</span>
+                </div>
+                <div class="stroke-row-meta">
+                  <strong>0</strong>
+                  <span>0%</span>
+                </div>
+              </div>
+              <div class="stroke-row">
+                <div class="stroke-row-main">
+                  <strong>Backhand</strong>
+                  <span>0 goed · 0 niet goed</span>
+                </div>
+                <div class="stroke-row-meta">
+                  <strong>0</strong>
+                  <span>0%</span>
+                </div>
+              </div>
+              <div class="stroke-row">
+                <div class="stroke-row-main">
+                  <strong>Volley</strong>
+                  <span>0 goed · 0 niet goed</span>
+                </div>
+                <div class="stroke-row-meta">
+                  <strong>0</strong>
+                  <span>0%</span>
+                </div>
+              </div>
+              <div class="stroke-row">
+                <div class="stroke-row-main">
+                  <strong>Overhead / smash</strong>
+                  <span>0 goed · 0 niet goed</span>
+                </div>
+                <div class="stroke-row-meta">
+                  <strong>0</strong>
+                  <span>0%</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="insight-card coach-card">
+            <div class="card-heading">
+              <p class="tiny-label">Coachrapport</p>
+              <strong id="coachHeadline">Nog geen sessie-analyse</strong>
+            </div>
+            <p id="coachSummary" class="support-copy">
+              Na een paar slagen vat de coach je spel samen met sterke punten, terugkerende fouten en concrete trainingsaccenten.
+            </p>
+            <ul id="coachList" class="feedback-list">
+              <li>Start een sessie om slagen over de hele rally heen op te slaan.</li>
+              <li>Na meerdere slagen ziet de coach welke slag het vaakst voorkomt en waar je techniek wegvalt.</li>
+              <li>Gebruik de sessietelling om goed versus minder goed uitgevoerde slagen te vergelijken.</li>
             </ul>
           </article>
 

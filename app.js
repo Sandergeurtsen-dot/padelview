@@ -24,9 +24,26 @@ const focusValue = document.querySelector("#focusValue");
 const feedbackList = document.querySelector("#feedbackList");
 const anglesGrid = document.querySelector("#anglesGrid");
 
+const sessionStatusText = document.querySelector("#sessionStatusText");
+const sessionTimerValue = document.querySelector("#sessionTimerValue");
+const recordingStatusText = document.querySelector("#recordingStatusText");
+const sessionTotalValue = document.querySelector("#sessionTotalValue");
+const sessionGoodValue = document.querySelector("#sessionGoodValue");
+const sessionBadValue = document.querySelector("#sessionBadValue");
+const sessionQualityValue = document.querySelector("#sessionQualityValue");
+const sessionSummaryText = document.querySelector("#sessionSummaryText");
+const sessionStatsGrid = document.querySelector("#sessionStatsGrid");
+const coachHeadline = document.querySelector("#coachHeadline");
+const coachSummary = document.querySelector("#coachSummary");
+const coachList = document.querySelector("#coachList");
+
 const startButton = document.querySelector("#startButton");
 const stopButton = document.querySelector("#stopButton");
 const switchButton = document.querySelector("#switchButton");
+const sessionStartButton = document.querySelector("#sessionStartButton");
+const sessionStopButton = document.querySelector("#sessionStopButton");
+const recordButton = document.querySelector("#recordButton");
+const downloadButton = document.querySelector("#downloadButton");
 const handednessSelect = document.querySelector("#handednessSelect");
 const trackingToggle = document.querySelector("#trackingToggle");
 const labelsToggle = document.querySelector("#labelsToggle");
@@ -57,32 +74,104 @@ const JOINT_LABELS = [
   ["leftKnee", "Linker knie"],
 ];
 
+const STROKE_TYPES = ["Forehand", "Backhand", "Volley", "Overhead / smash"];
+const QUALITY_THRESHOLD = 74;
+
+const DEFAULT_LIVE_FEEDBACK = [
+  "Houd de hele speler in beeld voor een complete meting.",
+  "Gebruik bij voorkeur de achtercamera voor meer detail.",
+  "De analyse is bedoeld als trainingshulp, niet als medische beoordeling.",
+];
+
+const DEFAULT_COACH_FEEDBACK = [
+  "Start een sessie om slagen over de hele rally heen op te slaan.",
+  "Na meerdere slagen ziet de coach welke slag het vaakst voorkomt en waar je techniek wegvalt.",
+  "Gebruik de sessietelling om goed versus minder goed uitgevoerde slagen te vergelijken.",
+];
+
+const ISSUE_LIBRARY = {
+  elbow: {
+    label: "slagarm compactheid",
+    tip: "Werk aan een compactere slagarm zodat je de bal rustiger en controleerbaarder raakt.",
+  },
+  shoulder: {
+    label: "schouderpositie",
+    tip: "Zet je schouderlijn eerder goed neer zodat je slagvoorbereiding rustiger wordt.",
+  },
+  knee: {
+    label: "beenwerk",
+    tip: "Zak actiever door je benen voor meer stabiliteit en timing in de rally.",
+  },
+  contact: {
+    label: "contactpunt",
+    tip: "Zoek een constanter contactpunt tussen heup en schouder om slagen schoner te raken.",
+  },
+  balance: {
+    label: "balans",
+    tip: "Bewaar meer balans in je basispositie en doorzwaai zodat je sneller klaar staat voor de volgende bal.",
+  },
+};
+
 const DOMINANT = {
   right: {
     sideLabel: "Rechts",
     shoulder: 12,
     elbow: 14,
     wrist: 16,
-    hip: 24,
-    knee: 26,
-    ankle: 28,
-    oppositeShoulder: 11,
-    oppositeHip: 23,
-    oppositeKnee: 25,
   },
   left: {
     sideLabel: "Links",
     shoulder: 11,
     elbow: 13,
     wrist: 15,
-    hip: 23,
-    knee: 25,
-    ankle: 27,
-    oppositeShoulder: 12,
-    oppositeHip: 24,
-    oppositeKnee: 26,
   },
 };
+
+function createStrokeBuckets() {
+  return STROKE_TYPES.reduce((acc, stroke) => {
+    acc[stroke] = {
+      total: 0,
+      good: 0,
+      bad: 0,
+      scoreSum: 0,
+    };
+    return acc;
+  }, {});
+}
+
+function createSessionState() {
+  return {
+    active: false,
+    startedAt: 0,
+    endedAt: 0,
+    totalStrokes: 0,
+    good: 0,
+    bad: 0,
+    totalScore: 0,
+    byStroke: createStrokeBuckets(),
+    weaknesses: {
+      elbow: 0,
+      shoulder: 0,
+      knee: 0,
+      contact: 0,
+      balance: 0,
+    },
+    timeline: [],
+    lastRegisteredAt: 0,
+    lastRegisteredStroke: "",
+  };
+}
+
+function createRecordingState() {
+  return {
+    supported: typeof MediaRecorder !== "undefined",
+    active: false,
+    recorder: null,
+    chunks: [],
+    url: "",
+    mimeType: "",
+  };
+}
 
 const state = {
   poseLandmarker: null,
@@ -97,6 +186,9 @@ const state = {
   currentStroke: "Wachten",
   tracking: { x: 0, y: 0, scale: 1 },
   history: [],
+  session: createSessionState(),
+  strokeCandidate: null,
+  recording: createRecordingState(),
 };
 
 function setStatus(message) {
@@ -117,6 +209,13 @@ function distance(a, b) {
 
 function midpoint(a, b) {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
+function formatDuration(ms) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 function smoothLandmarks(nextLandmarks) {
@@ -182,7 +281,6 @@ function computeMetrics(landmarks) {
   const shoulderCenter = midpoint(leftShoulder, rightShoulder);
   const hipCenter = midpoint(leftHip, rightHip);
   const shoulderWidth = distance(leftShoulder, rightShoulder) || 0.12;
-  const torsoHeight = distance(shoulderCenter, hipCenter) || 0.2;
   const stanceWidth = distance(leftAnkle, rightAnkle) / shoulderWidth;
 
   return {
@@ -214,16 +312,13 @@ function computeMetrics(landmarks) {
       hipCenter,
     },
     shoulderWidth,
-    torsoHeight,
     stanceWidth,
   };
 }
 
 function getDominantMetrics(metrics, handedness) {
-  const dominant = DOMINANT[handedness];
   const points = metrics.points;
   const wrist = handedness === "right" ? points.rightWrist : points.leftWrist;
-  const elbow = handedness === "right" ? points.rightElbow : points.leftElbow;
   const shoulder =
     handedness === "right" ? points.rightShoulder : points.leftShoulder;
   const hip = handedness === "right" ? points.rightHip : points.leftHip;
@@ -236,10 +331,7 @@ function getDominantMetrics(metrics, handedness) {
     handedness === "right"
       ? metrics.joints.rightShoulder
       : metrics.joints.leftShoulder;
-  const kneeAngle =
-    handedness === "right"
-      ? (metrics.joints.rightKnee + metrics.joints.leftKnee) / 2
-      : (metrics.joints.leftKnee + metrics.joints.rightKnee) / 2;
+  const kneeAngle = (metrics.joints.rightKnee + metrics.joints.leftKnee) / 2;
 
   const shoulderCenter = points.shoulderCenter;
   const hipCenter = points.hipCenter;
@@ -253,29 +345,22 @@ function getDominantMetrics(metrics, handedness) {
       : wrist.x > shoulderCenter.x + metrics.shoulderWidth * 0.02;
   const contactHeight =
     (hip.y - wrist.y) / Math.max(hip.y - shoulder.y, 0.001);
-  const trunkLean =
-    Math.abs(
-      (Math.atan2(shoulderCenter.x - hipCenter.x, hipCenter.y - shoulderCenter.y) *
-        180) /
-        Math.PI
-    ) || 0;
-
-  const dominantReach =
-    distance(wrist, shoulder) / Math.max(distance(hip, shoulder), 0.001);
-  const shoulderLineTilt =
-    Math.abs(
-      (Math.atan2(
-        oppositeShoulder.y - shoulder.y,
-        oppositeShoulder.x - shoulder.x,
-      ) *
-        180) /
-        Math.PI
-    );
+  const trunkLean = Math.abs(
+    (Math.atan2(shoulderCenter.x - hipCenter.x, hipCenter.y - shoulderCenter.y) *
+      180) /
+      Math.PI,
+  );
+  const shoulderLineTilt = Math.abs(
+    (Math.atan2(
+      oppositeShoulder.y - shoulder.y,
+      oppositeShoulder.x - shoulder.x,
+    ) *
+      180) /
+      Math.PI,
+  );
 
   return {
-    dominant,
     wrist,
-    elbow,
     shoulder,
     hip,
     elbowAngle,
@@ -285,7 +370,6 @@ function getDominantMetrics(metrics, handedness) {
     crossedBody,
     contactHeight,
     trunkLean,
-    dominantReach,
     shoulderLineTilt,
   };
 }
@@ -370,14 +454,16 @@ function classifyStroke(metrics, handedness, now) {
     return acc;
   }, {});
 
-  const [stableName = stableStroke, stableScore = best.score] = Object.entries(voteCounts)
-    .sort((a, b) => b[1] - a[1])[0] ?? [stableStroke, best.score];
+  const [stableName = stableStroke, stableScore = best.score] =
+    Object.entries(voteCounts).sort((a, b) => b[1] - a[1])[0] ?? [
+      stableStroke,
+      best.score,
+    ];
 
   return {
     name: stableName,
     confidence: clamp(stableScore / Math.max(state.history.length, 1), 0, 1),
     speed,
-    dominant,
   };
 }
 
@@ -387,6 +473,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
     Forehand: [
       {
         label: "Ellebooghoek",
+        tag: "elbow",
         value: dominant.elbowAngle,
         min: 95,
         max: 150,
@@ -394,6 +481,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
       },
       {
         label: "Schouderhoek",
+        tag: "shoulder",
         value: dominant.shoulderAngle,
         min: 40,
         max: 115,
@@ -401,13 +489,15 @@ function evaluateTechnique(stroke, metrics, handedness) {
       },
       {
         label: "Kniebuiging",
+        tag: "knee",
         value: dominant.kneeAngle,
         min: 135,
         max: 168,
-        message: "Zak iets dieper door je knieën om stabieler te staan.",
+        message: "Zak iets dieper door je knieen om stabieler te staan.",
       },
       {
         label: "Contacthoogte",
+        tag: "contact",
         value: dominant.contactHeight,
         min: 0.25,
         max: 1.15,
@@ -418,6 +508,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
     Backhand: [
       {
         label: "Ellebooghoek",
+        tag: "elbow",
         value: dominant.elbowAngle,
         min: 90,
         max: 145,
@@ -425,6 +516,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
       },
       {
         label: "Schouderhoek",
+        tag: "shoulder",
         value: dominant.shoulderAngle,
         min: 35,
         max: 110,
@@ -432,6 +524,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
       },
       {
         label: "Kniebuiging",
+        tag: "knee",
         value: dominant.kneeAngle,
         min: 135,
         max: 168,
@@ -439,6 +532,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
       },
       {
         label: "Middellijn",
+        tag: "balance",
         value: dominant.crossedBody ? 1 : 0,
         min: 1,
         max: 1,
@@ -449,6 +543,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
     Volley: [
       {
         label: "Ellebooghoek",
+        tag: "elbow",
         value: dominant.elbowAngle,
         min: 85,
         max: 125,
@@ -456,6 +551,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
       },
       {
         label: "Schouderhoek",
+        tag: "shoulder",
         value: dominant.shoulderAngle,
         min: 35,
         max: 92,
@@ -463,6 +559,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
       },
       {
         label: "Kniebuiging",
+        tag: "knee",
         value: dominant.kneeAngle,
         min: 130,
         max: 165,
@@ -470,6 +567,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
       },
       {
         label: "Contacthoogte",
+        tag: "contact",
         value: dominant.contactHeight,
         min: 0.45,
         max: 1.05,
@@ -480,6 +578,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
     "Overhead / smash": [
       {
         label: "Ellebooghoek",
+        tag: "elbow",
         value: dominant.elbowAngle,
         min: 138,
         max: 180,
@@ -487,6 +586,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
       },
       {
         label: "Schouderhoek",
+        tag: "shoulder",
         value: dominant.shoulderAngle,
         min: 98,
         max: 175,
@@ -494,6 +594,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
       },
       {
         label: "Kniebuiging",
+        tag: "knee",
         value: dominant.kneeAngle,
         min: 130,
         max: 165,
@@ -501,6 +602,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
       },
       {
         label: "Contacthoogte",
+        tag: "contact",
         value: dominant.contactHeight,
         min: 1.05,
         max: 2,
@@ -511,13 +613,15 @@ function evaluateTechnique(stroke, metrics, handedness) {
     "Ready positie": [
       {
         label: "Houding",
+        tag: "knee",
         value: dominant.kneeAngle,
         min: 135,
         max: 170,
-        message: "Blijf licht door je knieën in je ready positie.",
+        message: "Blijf licht door je knieen in je ready positie.",
       },
       {
         label: "Armpositie",
+        tag: "balance",
         value: dominant.elbowAngle,
         min: 80,
         max: 130,
@@ -535,11 +639,10 @@ function evaluateTechnique(stroke, metrics, handedness) {
 
   const averageScore =
     scoredChecks.reduce((sum, check) => sum + check.score, 0) / scoredChecks.length;
-  const feedback = scoredChecks
-    .filter((check) => check.score < 0.7)
-    .sort((a, b) => a.score - b.score)
-    .slice(0, 3)
-    .map((check) => check.message);
+  const issues = scoredChecks
+    .filter((check) => check.score < 0.74)
+    .sort((a, b) => a.score - b.score);
+  const feedback = issues.slice(0, 3).map((check) => check.message);
 
   return {
     score: Math.round(averageScore * 100),
@@ -549,6 +652,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
         : [
             "Mooie balans in deze houding. Blijf de slag in hetzelfde ritme herhalen.",
           ],
+    issues,
   };
 }
 
@@ -572,6 +676,16 @@ function renderFeedback(items) {
   });
 }
 
+function renderAnglePlaceholder() {
+  anglesGrid.innerHTML = "";
+  JOINT_LABELS.forEach(([, label]) => {
+    const row = document.createElement("div");
+    row.className = "angle-row";
+    row.innerHTML = `<span>${label}</span><strong>--</strong>`;
+    anglesGrid.appendChild(row);
+  });
+}
+
 function renderAngles(joints) {
   anglesGrid.innerHTML = "";
   JOINT_LABELS.forEach(([key, label]) => {
@@ -588,12 +702,10 @@ function jointColor(stroke, key, value) {
       ? {
           elbow: "rightElbow",
           shoulder: "rightShoulder",
-          knee: "rightKnee",
         }
       : {
           elbow: "leftElbow",
           shoulder: "leftShoulder",
-          knee: "leftKnee",
         };
 
   const ranges = {
@@ -638,27 +750,6 @@ function jointColor(stroke, key, value) {
   return "rgba(255, 111, 145, 0.95)";
 }
 
-function drawLabel(point, text, color) {
-  context.font = "700 15px 'Space Grotesk'";
-  const paddingX = 10;
-  const metrics = context.measureText(text);
-  const width = metrics.width + paddingX * 2;
-  const height = 32;
-  const x = clamp(point.x - width / 2, 10, canvas.width - width - 10);
-  const y = clamp(point.y - 48, 12, canvas.height - height - 10);
-
-  context.fillStyle = "rgba(4, 12, 19, 0.9)";
-  drawRoundedRect(x, y, width, height, 14);
-  context.fill();
-
-  context.strokeStyle = color;
-  context.lineWidth = 1.5;
-  context.stroke();
-
-  context.fillStyle = color;
-  context.fillText(text, x + paddingX, y + 21);
-}
-
 function drawRoundedRect(x, y, width, height, radius) {
   const safeRadius = Math.min(radius, width / 2, height / 2);
   context.beginPath();
@@ -685,6 +776,27 @@ function drawRoundedRect(x, y, width, height, radius) {
   context.closePath();
 }
 
+function drawLabel(point, text, color) {
+  context.font = "700 15px 'Space Grotesk'";
+  const paddingX = 10;
+  const metrics = context.measureText(text);
+  const width = metrics.width + paddingX * 2;
+  const height = 32;
+  const x = clamp(point.x - width / 2, 10, canvas.width - width - 10);
+  const y = clamp(point.y - 48, 12, canvas.height - height - 10);
+
+  context.fillStyle = "rgba(4, 12, 19, 0.9)";
+  drawRoundedRect(x, y, width, height, 14);
+  context.fill();
+
+  context.strokeStyle = color;
+  context.lineWidth = 1.5;
+  context.stroke();
+
+  context.fillStyle = color;
+  context.fillText(text, x + paddingX, y + 21);
+}
+
 function drawSkeleton(landmarks, joints, stroke) {
   context.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -699,9 +811,10 @@ function drawSkeleton(landmarks, joints, stroke) {
 
     const a = toCanvasPoint(landmarks[start]);
     const b = toCanvasPoint(landmarks[end]);
+    const dominantSide = DOMINANT[handednessSelect.value];
     const isDominantSegment =
-      [DOMINANT[handednessSelect.value].shoulder, DOMINANT[handednessSelect.value].elbow, DOMINANT[handednessSelect.value].wrist].includes(start) ||
-      [DOMINANT[handednessSelect.value].shoulder, DOMINANT[handednessSelect.value].elbow, DOMINANT[handednessSelect.value].wrist].includes(end);
+      [dominantSide.shoulder, dominantSide.elbow, dominantSide.wrist].includes(start) ||
+      [dominantSide.shoulder, dominantSide.elbow, dominantSide.wrist].includes(end);
 
     context.strokeStyle = isDominantSegment
       ? "rgba(67, 224, 179, 0.9)"
@@ -779,7 +892,17 @@ function updateTrackingTransform(landmarks) {
   context.restore();
 }
 
-function updateDashboard(stroke, confidence, joints, technique) {
+function buildLiveFeedback(technique) {
+  const items = [...technique.feedback];
+  if (state.session.active) {
+    items.push(
+      `Sessie loopt: ${state.session.totalStrokes} slagen geregistreerd. Goed: ${state.session.good}, niet goed: ${state.session.bad}.`,
+    );
+  }
+  return items.slice(0, 3);
+}
+
+function updateLiveDashboard(stroke, confidence, joints, technique) {
   const score = technique.score;
   state.currentStroke = stroke;
 
@@ -800,11 +923,11 @@ function updateDashboard(stroke, confidence, joints, technique) {
       : "Gebruik de coachingregels hieronder om de volgende herhalingen scherper te maken.";
 
   updateScoreRing(score);
-  renderFeedback(technique.feedback);
+  renderFeedback(buildLiveFeedback(technique));
   renderAngles(joints);
 }
 
-function resetDashboard() {
+function resetLiveDashboard() {
   detectionHeadline.textContent = "Geen actieve slag";
   detectionDetail.textContent =
     "Zodra de dominante arm versnelt, schat de app of het om een forehand, backhand, volley of overhead gaat.";
@@ -819,11 +942,449 @@ function resetDashboard() {
   strokeText.textContent = "Wachten";
   fpsChip.textContent = "0 FPS";
   updateScoreRing(0);
-  renderFeedback([
-    "Houd de hele speler in beeld voor een complete meting.",
-    "Gebruik bij voorkeur de achtercamera voor meer detail.",
-    "De analyse is bedoeld als trainingshulp, niet als medische beoordeling.",
-  ]);
+  renderFeedback(DEFAULT_LIVE_FEEDBACK);
+  renderAnglePlaceholder();
+}
+
+function getSessionDurationMs() {
+  if (!state.session.startedAt) {
+    return 0;
+  }
+
+  const endTime = state.session.active ? Date.now() : state.session.endedAt;
+  return Math.max(0, endTime - state.session.startedAt);
+}
+
+function renderSessionStats() {
+  sessionStatsGrid.innerHTML = "";
+
+  STROKE_TYPES.forEach((stroke) => {
+    const bucket = state.session.byStroke[stroke];
+    const successRatio = bucket.total
+      ? Math.round((bucket.good / bucket.total) * 100)
+      : 0;
+
+    const row = document.createElement("div");
+    row.className = "stroke-row";
+    row.innerHTML = `
+      <div class="stroke-row-main">
+        <strong>${stroke}</strong>
+        <span>${bucket.good} goed · ${bucket.bad} niet goed</span>
+      </div>
+      <div class="stroke-row-meta">
+        <strong>${bucket.total}</strong>
+        <span>${successRatio}% goed</span>
+      </div>
+    `;
+    sessionStatsGrid.appendChild(row);
+  });
+}
+
+function buildCoachReport() {
+  const { totalStrokes, good, bad, totalScore, byStroke, weaknesses } = state.session;
+
+  if (totalStrokes === 0) {
+    return {
+      headline: "Nog geen sessie-analyse",
+      summary:
+        "Start een sessie om slagen te tellen, techniek te scoren en een coachrapport op te bouwen.",
+      tips: DEFAULT_COACH_FEEDBACK,
+    };
+  }
+
+  if (totalStrokes < 3) {
+    return {
+      headline: state.session.active
+        ? "Coach verzamelt nog rally-data"
+        : "Coach heeft nog weinig sessiedata",
+      summary:
+        "Er zijn al slagen geregistreerd, maar nog niet genoeg voor een stabiel patroon. Speel nog een paar duidelijke rallyslagen.",
+      tips: [
+        "Houd dezelfde speler volledig in beeld zodat de coach slagen niet mist.",
+        "Maak je swing duidelijk af; korte twijfelbeelden worden minder snel als slag opgeslagen.",
+        "Na ongeveer drie of meer slagen wordt de analyse per slagsoort betrouwbaarder.",
+      ],
+    };
+  }
+
+  const averageScore = Math.round(totalScore / totalStrokes);
+  const goodRatio = Math.round((good / totalStrokes) * 100);
+  const playedStrokes = STROKE_TYPES.map((stroke) => ({
+    stroke,
+    ...byStroke[stroke],
+    ratio: byStroke[stroke].total
+      ? Math.round((byStroke[stroke].good / byStroke[stroke].total) * 100)
+      : 0,
+  })).filter((stroke) => stroke.total > 0);
+
+  const mostPlayed =
+    [...playedStrokes].sort((a, b) => b.total - a.total)[0] ??
+    { stroke: "geen slag", total: 0, ratio: 0 };
+  const weakestStroke =
+    [...playedStrokes]
+      .filter((stroke) => stroke.total >= 2)
+      .sort((a, b) => a.ratio - b.ratio)[0] ?? null;
+  const dominantIssue =
+    Object.entries(weaknesses).sort((a, b) => b[1] - a[1])[0] ?? ["", 0];
+
+  const tips = [];
+
+  if (goodRatio >= 75) {
+    tips.push(
+      "Je basis is stabiel. Probeer dezelfde timing vast te houden wanneer het tempo in de rally omhoog gaat.",
+    );
+  } else if (goodRatio >= 55) {
+    tips.push(
+      "Je sessie is redelijk stabiel, maar je verliest nog kwaliteit onder druk. Werk op rust in voorbereiding en contactmoment.",
+    );
+  } else {
+    tips.push(
+      "Je verliest nog veel kwaliteit in de rally. Focus eerst op rust, vroeg klaar staan en gecontroleerd contact in plaats van op pure snelheid.",
+    );
+  }
+
+  if (mostPlayed.total > 0) {
+    tips.push(
+      `${mostPlayed.stroke} kwam het vaakst terug in je spel. Gebruik die slag als hoofdthema in je volgende trainingsblok.`,
+    );
+  }
+
+  if (weakestStroke) {
+    tips.push(
+      `${weakestStroke.stroke} is nu je minst stabiele slag (${weakestStroke.ratio}% goed). Herhaal daar extra rustige technische herhalingen op.`,
+    );
+  }
+
+  if (dominantIssue[1] > 0 && ISSUE_LIBRARY[dominantIssue[0]]) {
+    tips.push(ISSUE_LIBRARY[dominantIssue[0]].tip);
+  }
+
+  if (playedStrokes.length <= 2 && totalStrokes >= 6) {
+    tips.push(
+      "Je spelbeeld is nog vrij eenzijdig. Bouw meer variatie in met volleys of overheads zodra de rally dat toelaat.",
+    );
+  }
+
+  return {
+    headline:
+      averageScore >= 82
+        ? "Coach ziet een stabiele basis"
+        : averageScore >= 68
+          ? "Coach ziet een bruikbare trainingsbasis"
+          : "Coach ziet duidelijke werkpunten",
+    summary: `In deze sessie registreerde de app ${totalStrokes} slagen: ${good} goed en ${bad} niet goed. ${mostPlayed.stroke} kwam het vaakst voor en je gemiddelde techniek lag op ${averageScore}/100.`,
+    tips: tips.slice(0, 3),
+  };
+}
+
+function renderCoachReport() {
+  const report = buildCoachReport();
+  coachHeadline.textContent = report.headline;
+  coachSummary.textContent = report.summary;
+  coachList.innerHTML = "";
+
+  report.tips.forEach((tip) => {
+    const item = document.createElement("li");
+    item.textContent = tip;
+    coachList.appendChild(item);
+  });
+}
+
+function renderSessionSummary() {
+  const { active, startedAt, endedAt, totalStrokes, good, bad, totalScore } = state.session;
+  const quality =
+    totalStrokes > 0 ? `${Math.round((good / totalStrokes) * 100)}%` : "--";
+
+  sessionStatusText.textContent = active
+    ? "Sessie loopt"
+    : endedAt
+      ? "Sessie afgerond"
+      : "Nog niet gestart";
+  sessionTimerValue.textContent = startedAt ? formatDuration(getSessionDurationMs()) : "00:00";
+  sessionTotalValue.textContent = String(totalStrokes);
+  sessionGoodValue.textContent = String(good);
+  sessionBadValue.textContent = String(bad);
+  sessionQualityValue.textContent = quality;
+
+  if (!startedAt) {
+    sessionSummaryText.textContent =
+      "Start een sessie om je slagen te tellen, te beoordelen en door de coach te laten samenvatten.";
+    return;
+  }
+
+  if (totalStrokes === 0) {
+    sessionSummaryText.textContent = active
+      ? "De sessie is gestart. Zodra een slag duidelijk genoeg herkend wordt, telt de app hem mee."
+      : "De sessie is gestopt zonder duidelijke geregistreerde slagen.";
+    return;
+  }
+
+  const averageScore = Math.round(totalScore / totalStrokes);
+  const topStroke =
+    STROKE_TYPES.map((stroke) => ({
+      stroke,
+      total: state.session.byStroke[stroke].total,
+    })).sort((a, b) => b.total - a.total)[0]?.stroke ?? "geen slag";
+
+  sessionSummaryText.textContent = `${topStroke} was je meest gespeelde slag. Tot nu toe staan ${good} slagen als goed en ${bad} als niet goed, met een gemiddelde techniek van ${averageScore}/100.`;
+}
+
+function syncSessionButtons() {
+  sessionStartButton.disabled = !state.running || state.session.active;
+  sessionStopButton.disabled = !state.session.active;
+}
+
+function updateRecordingUi() {
+  if (!state.recording.supported) {
+    recordButton.disabled = true;
+    recordButton.textContent = "Opname niet beschikbaar";
+    downloadButton.disabled = true;
+    recordingStatusText.textContent = "Niet ondersteund";
+    return;
+  }
+
+  if (!state.running) {
+    recordButton.disabled = true;
+    recordButton.textContent = "Start opname";
+    recordingStatusText.textContent = state.recording.url ? "Klaar" : "Uit";
+    downloadButton.disabled = !state.recording.url;
+    return;
+  }
+
+  recordButton.disabled = false;
+  recordButton.textContent = state.recording.active ? "Stop opname" : "Start opname";
+  if (state.recording.active) {
+    recordingStatusText.textContent = "Opname loopt";
+  } else if (state.recording.url) {
+    recordingStatusText.textContent = "Klaar";
+  } else {
+    recordingStatusText.textContent = "Uit";
+  }
+  downloadButton.disabled = !state.recording.url;
+}
+
+function refreshSessionUi() {
+  syncSessionButtons();
+  renderSessionSummary();
+  renderSessionStats();
+  renderCoachReport();
+  updateRecordingUi();
+}
+
+function registerSessionStroke(stroke, technique) {
+  const bucket = state.session.byStroke[stroke.name];
+  const goodStroke = technique.score >= QUALITY_THRESHOLD;
+  const issues = technique.issues.slice(0, 2);
+
+  state.session.totalStrokes += 1;
+  state.session.totalScore += technique.score;
+  state.session.good += goodStroke ? 1 : 0;
+  state.session.bad += goodStroke ? 0 : 1;
+
+  bucket.total += 1;
+  bucket.good += goodStroke ? 1 : 0;
+  bucket.bad += goodStroke ? 0 : 1;
+  bucket.scoreSum += technique.score;
+
+  issues.forEach((issue) => {
+    if (state.session.weaknesses[issue.tag] !== undefined) {
+      state.session.weaknesses[issue.tag] += 1;
+    }
+  });
+
+  state.session.timeline.push({
+    stroke: stroke.name,
+    score: technique.score,
+    good: goodStroke,
+    time: Date.now(),
+  });
+  state.session.timeline = state.session.timeline.slice(-40);
+
+  refreshSessionUi();
+}
+
+function maybeRegisterStroke(stroke, technique, now) {
+  if (!state.session.active) {
+    state.strokeCandidate = null;
+    return;
+  }
+
+  const qualifies =
+    stroke.name !== "Ready positie" &&
+    stroke.confidence >= 0.58 &&
+    stroke.speed >= 0.28;
+
+  if (!qualifies) {
+    if (state.strokeCandidate && now - state.strokeCandidate.lastSeenAt > 220) {
+      state.strokeCandidate = null;
+    }
+    return;
+  }
+
+  if (!state.strokeCandidate || state.strokeCandidate.name !== stroke.name) {
+    state.strokeCandidate = {
+      name: stroke.name,
+      frames: 1,
+      lastSeenAt: now,
+      stroke,
+      technique,
+    };
+    return;
+  }
+
+  state.strokeCandidate.frames += 1;
+  state.strokeCandidate.lastSeenAt = now;
+  if (stroke.confidence > state.strokeCandidate.stroke.confidence) {
+    state.strokeCandidate.stroke = stroke;
+  }
+  if (technique.score > state.strokeCandidate.technique.score) {
+    state.strokeCandidate.technique = technique;
+  }
+
+  const cooldown =
+    stroke.name === state.session.lastRegisteredStroke ? 1100 : 700;
+  if (
+    state.strokeCandidate.frames < 2 ||
+    now - state.session.lastRegisteredAt < cooldown
+  ) {
+    return;
+  }
+
+  registerSessionStroke(state.strokeCandidate.stroke, state.strokeCandidate.technique);
+  state.session.lastRegisteredAt = now;
+  state.session.lastRegisteredStroke = stroke.name;
+  state.strokeCandidate = null;
+}
+
+function getPreferredRecorderMimeType() {
+  if (!state.recording.supported || typeof MediaRecorder.isTypeSupported !== "function") {
+    return "";
+  }
+
+  const types = [
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
+    "video/webm",
+    "video/mp4",
+  ];
+
+  return types.find((type) => MediaRecorder.isTypeSupported(type)) ?? "";
+}
+
+async function startRecording() {
+  if (!state.recording.supported || !state.stream || state.recording.active) {
+    return;
+  }
+
+  try {
+    if (state.recording.url) {
+      URL.revokeObjectURL(state.recording.url);
+      state.recording.url = "";
+    }
+
+    state.recording.chunks = [];
+    const mimeType = getPreferredRecorderMimeType();
+    const recorder = mimeType
+      ? new MediaRecorder(state.stream, { mimeType })
+      : new MediaRecorder(state.stream);
+
+    state.recording.mimeType = recorder.mimeType || mimeType || "video/webm";
+    state.recording.recorder = recorder;
+    recorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0) {
+        state.recording.chunks.push(event.data);
+      }
+    };
+    recorder.onstop = () => {
+      state.recording.active = false;
+      if (state.recording.chunks.length > 0) {
+        const blob = new Blob(state.recording.chunks, {
+          type: state.recording.mimeType || "video/webm",
+        });
+        state.recording.url = URL.createObjectURL(blob);
+      }
+      updateRecordingUi();
+    };
+
+    recorder.start(1000);
+    state.recording.active = true;
+    setStatus("Camera analyse en opname actief");
+    updateRecordingUi();
+  } catch (error) {
+    console.error(error);
+    renderFeedback([
+      "De opname kon niet starten op dit toestel of in deze browser.",
+      "De live analyse blijft wel gewoon doorgaan.",
+      "Probeer eventueel Chrome of Safari in de nieuwste versie.",
+    ]);
+    updateRecordingUi();
+  }
+}
+
+function stopRecording() {
+  if (!state.recording.active || !state.recording.recorder) {
+    return;
+  }
+
+  recordingStatusText.textContent = "Opslaan...";
+  if (state.recording.recorder.state !== "inactive") {
+    state.recording.recorder.stop();
+  }
+  state.recording.active = false;
+  recordButton.textContent = "Start opname";
+}
+
+function downloadRecording() {
+  if (!state.recording.url) {
+    return;
+  }
+
+  const extension = state.recording.mimeType.includes("mp4") ? "mp4" : "webm";
+  const link = document.createElement("a");
+  link.href = state.recording.url;
+  link.download = `padel-sessie-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.${extension}`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+function startSession() {
+  if (!state.running) {
+    renderFeedback([
+      "Start eerst de camera-analyse voordat je een sessie begint.",
+      "Daarna kan de app per slag registreren wat goed en minder goed ging.",
+      "De coach bouwt zijn analyse op vanuit die sessiegegevens.",
+    ]);
+    return;
+  }
+
+  state.session = createSessionState();
+  state.session.active = true;
+  state.session.startedAt = Date.now();
+  state.strokeCandidate = null;
+  setStatus("Trainingssessie gestart");
+  refreshSessionUi();
+}
+
+function endSession(reason = "manual") {
+  if (!state.session.active) {
+    return;
+  }
+
+  state.session.active = false;
+  state.session.endedAt = Date.now();
+  state.strokeCandidate = null;
+
+  if (state.recording.active) {
+    stopRecording();
+  }
+
+  setStatus(
+    reason === "cameraStopped"
+      ? "Camera gestopt, sessie opgeslagen"
+      : "Trainingssessie afgerond",
+  );
+  refreshSessionUi();
 }
 
 function resizeCanvasToVideo() {
@@ -888,11 +1449,14 @@ async function startCamera() {
     state.smoothedLandmarks = null;
     state.previousDominantWrist = null;
     state.history = [];
+    state.strokeCandidate = null;
 
     stopButton.disabled = false;
     switchButton.disabled = false;
     setStatus("Live analyse actief");
     trackingText.textContent = "Spelertracking wacht op lichaamspunten";
+    syncSessionButtons();
+    updateRecordingUi();
     state.animationFrameId = requestAnimationFrame(analyseLoop);
   } catch (error) {
     console.error(error);
@@ -907,6 +1471,13 @@ async function startCamera() {
 }
 
 function stopCamera() {
+  if (state.session.active) {
+    endSession("cameraStopped");
+  }
+  if (state.recording.active) {
+    stopRecording();
+  }
+
   state.running = false;
   if (state.animationFrameId) {
     cancelAnimationFrame(state.animationFrameId);
@@ -924,10 +1495,16 @@ function stopCamera() {
   state.tracking = { x: 0, y: 0, scale: 1 };
   state.history = [];
   state.previousDominantWrist = null;
-  resetDashboard();
+  state.strokeCandidate = null;
+  resetLiveDashboard();
+  refreshSessionUi();
 }
 
 async function switchCamera() {
+  if (state.recording.active) {
+    stopRecording();
+  }
+
   state.facingMode = state.facingMode === "environment" ? "user" : "environment";
   if (state.running) {
     await startCamera();
@@ -947,6 +1524,9 @@ function analyseLoop(now) {
   }
 
   updateFps(now);
+  if (state.session.active) {
+    renderSessionSummary();
+  }
 
   if (video.readyState >= 2 && video.currentTime !== state.lastVideoTime) {
     state.lastVideoTime = video.currentTime;
@@ -964,7 +1544,8 @@ function analyseLoop(now) {
 
       drawSkeleton(smoothed, metrics.joints, stroke.name);
       updateTrackingTransform(smoothed);
-      updateDashboard(stroke.name, stroke.confidence, metrics.joints, technique);
+      updateLiveDashboard(stroke.name, stroke.confidence, metrics.joints, technique);
+      maybeRegisterStroke(stroke, technique, now);
 
       trackingText.textContent =
         stroke.name === "Ready positie"
@@ -976,18 +1557,38 @@ function analyseLoop(now) {
       trackingText.textContent = "Geen speler gedetecteerd";
       detectionHeadline.textContent = "Zoek speler";
       detectionDetail.textContent =
-        "Zorg dat schouders, heupen en knieën in beeld blijven voor een stabiele analyse.";
+        "Zorg dat schouders, heupen en knieen in beeld blijven voor een stabiele analyse.";
       focusValue.textContent = trackingToggle.checked ? "Zoekt speler" : "Uit";
+      renderFeedback([
+        "Geen speler gedetecteerd. Houd schouders, heupen en knieen volledig in beeld.",
+        state.session.active
+          ? "De sessie loopt door, maar zonder duidelijke pose worden er geen slagen geteld."
+          : "Start een sessie zodra de speler stabiel in beeld staat.",
+        "Gebruik bij voorkeur de achtercamera voor een scherper silhouet.",
+      ]);
     }
   }
 
   state.animationFrameId = requestAnimationFrame(analyseLoop);
 }
 
+function handleRecordButton() {
+  if (state.recording.active) {
+    stopRecording();
+    return;
+  }
+
+  startRecording();
+}
+
 function registerEvents() {
   startButton.addEventListener("click", startCamera);
   stopButton.addEventListener("click", stopCamera);
   switchButton.addEventListener("click", switchCamera);
+  sessionStartButton.addEventListener("click", startSession);
+  sessionStopButton.addEventListener("click", () => endSession("manual"));
+  recordButton.addEventListener("click", handleRecordButton);
+  downloadButton.addEventListener("click", downloadRecording);
 
   handednessSelect.addEventListener("change", () => {
     armValue.textContent = DOMINANT[handednessSelect.value].sideLabel;
@@ -1025,7 +1626,8 @@ function boot() {
 
   registerEvents();
   registerServiceWorker();
-  resetDashboard();
+  resetLiveDashboard();
+  refreshSessionUi();
 }
 
 boot();
