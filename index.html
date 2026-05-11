@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#0b1020" />
     <meta
       name="description"
-      content="Mobiele padel analyse-app met live spelertracking, skelet-overlay en gewrichtshoeken."
+      content="Mobiele padel analyse-app met live spelertracking, slagkwaliteit en coachgerichte feedback."
     />
     <title>Padel Motion Coach</title>
     <link rel="manifest" href="./manifest.webmanifest" />
@@ -29,14 +29,14 @@
           <p class="eyebrow">Live Padel Analyse</p>
           <h1>Padel Motion Coach</h1>
           <p class="hero-copy">
-            Volg een speler tijdens een rally, teken ledematen in beeld en laat
-            direct zien welke slag en welke techniek erbij hoort.
+            Volg een speler tijdens een rally, herken slagen live en vertaal
+            techniek direct naar bruikbare coachtips op je telefoon.
           </p>
         </div>
         <div class="hero-badges">
           <span>Camera</span>
-          <span>Player Tracking</span>
-          <span>Joint Angles</span>
+          <span>Spelertracking</span>
+          <span>Coachcues</span>
         </div>
       </header>
 
@@ -68,7 +68,8 @@
                 <h2>Richt je telefoon op de speler</h2>
                 <p>
                   Plaats de camera liefst schuin achter de speler of ter hoogte
-                  van de zijlijn voor de duidelijkste slag- en hoekanalyse.
+                  van de zijlijn voor de duidelijkste slaganalyse en
+                  techniekcoaching.
                 </p>
                 <button id="startButton" class="primary-button">
                   Start camera-analyse
@@ -118,8 +119,8 @@
               <input id="trackingToggle" type="checkbox" checked />
             </label>
             <label class="control toggle-control">
-              <span>Hoeklabels</span>
-              <input id="labelsToggle" type="checkbox" checked />
+              <span>Technieklabels</span>
+              <input id="labelsToggle" type="checkbox" />
             </label>
           </div>
         </section>
@@ -164,7 +165,7 @@
               </div>
             </div>
             <p id="scoreSummary" class="support-copy">
-              Start de camera om hoeken, slagtype en techniek te meten.
+              Start de camera om slagkwaliteit, techniek en coaching live te meten.
             </p>
           </article>
 
@@ -229,37 +230,19 @@
             </ul>
           </article>
 
-          <article class="insight-card angles-card" data-panel="live">
+          <article class="insight-card focus-card" data-panel="live">
             <div class="card-heading">
-              <p class="tiny-label">Gewrichtshoeken</p>
-              <strong>Per ledemaat</strong>
+              <p class="tiny-label">Actuele Focus</p>
+              <strong id="liveFocusHeadline">Nog geen focuspunt</strong>
             </div>
-            <div id="anglesGrid" class="angles-grid">
-              <div class="angle-row">
-                <span>Rechter elleboog</span>
-                <strong>--</strong>
-              </div>
-              <div class="angle-row">
-                <span>Linker elleboog</span>
-                <strong>--</strong>
-              </div>
-              <div class="angle-row">
-                <span>Rechter schouder</span>
-                <strong>--</strong>
-              </div>
-              <div class="angle-row">
-                <span>Linker schouder</span>
-                <strong>--</strong>
-              </div>
-              <div class="angle-row">
-                <span>Rechter knie</span>
-                <strong>--</strong>
-              </div>
-              <div class="angle-row">
-                <span>Linker knie</span>
-                <strong>--</strong>
-              </div>
-            </div>
+            <p id="liveFocusSummary" class="support-copy">
+              De coach vertaalt je techniek live naar een simpel, bruikbaar focuspunt.
+            </p>
+            <ul id="liveFocusList" class="feedback-list">
+              <li>Start de camera om een live focuspunt te krijgen.</li>
+              <li>De app gebruikt biomechanica intern, maar toont vooral coachbare aanwijzingen.</li>
+              <li>Zo blijft de feedback bruikbaar tijdens het spelen.</li>
+            </ul>
           </article>
 
           <article class="insight-card session-card" data-panel="session">
@@ -429,7 +412,7 @@
             </p>
           </article>
 
-          <article class="insight-card angles-card" data-panel="coach">
+          <article class="insight-card saved-card" data-panel="coach">
             <div class="card-heading">
               <p class="tiny-label">Laatste sessie</p>
               <strong id="savedHeadline">Nog niets opgeslagen</strong>

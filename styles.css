@@ -146,8 +146,7 @@ h1 {
 .stage-topbar,
 .card-heading,
 .detection-metrics,
-.controls-grid,
-.angle-row {
+.controls-grid {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -457,8 +456,7 @@ select,
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.detection-metrics div,
-.angle-row {
+.detection-metrics div {
   padding: 0.85rem;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.045);
@@ -479,15 +477,6 @@ select,
   color: var(--muted);
   background: rgba(255, 255, 255, 0.04);
   border-left: 3px solid rgba(125, 200, 255, 0.55);
-}
-
-.angles-grid {
-  display: grid;
-  gap: 0.7rem;
-}
-
-.angle-row span {
-  color: var(--muted);
 }
 
 @keyframes pulse {

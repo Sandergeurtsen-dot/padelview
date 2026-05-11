@@ -23,7 +23,9 @@ const confidenceValue = document.querySelector("#confidenceValue");
 const armValue = document.querySelector("#armValue");
 const focusValue = document.querySelector("#focusValue");
 const feedbackList = document.querySelector("#feedbackList");
-const anglesGrid = document.querySelector("#anglesGrid");
+const liveFocusHeadline = document.querySelector("#liveFocusHeadline");
+const liveFocusSummary = document.querySelector("#liveFocusSummary");
+const liveFocusList = document.querySelector("#liveFocusList");
 
 const sessionStatusText = document.querySelector("#sessionStatusText");
 const sessionTimerValue = document.querySelector("#sessionTimerValue");
@@ -85,15 +87,6 @@ const CONNECTIONS = [
   [26, 28],
   [27, 31],
   [28, 32],
-];
-
-const JOINT_LABELS = [
-  ["rightElbow", "Rechter elleboog"],
-  ["leftElbow", "Linker elleboog"],
-  ["rightShoulder", "Rechter schouder"],
-  ["leftShoulder", "Linker schouder"],
-  ["rightKnee", "Rechter knie"],
-  ["leftKnee", "Linker knie"],
 ];
 
 const STROKE_TYPES = ["Forehand", "Backhand", "Volley", "Overhead / smash"];
@@ -590,7 +583,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
   const templates = {
     Forehand: [
       {
-        label: "Ellebooghoek",
+        label: "Slagarm",
         tag: "elbow",
         value: dominant.elbowAngle,
         min: 95,
@@ -598,7 +591,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
         message: "Houd je slagarm iets compacter voor meer controle in de forehand.",
       },
       {
-        label: "Schouderhoek",
+        label: "Schouderpositie",
         tag: "shoulder",
         value: dominant.shoulderAngle,
         min: 40,
@@ -606,7 +599,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
         message: "Breng je arm iets vrijer naast je romp in de voorbereiding.",
       },
       {
-        label: "Kniebuiging",
+        label: "Beenwerk",
         tag: "knee",
         value: dominant.kneeAngle,
         min: 135,
@@ -614,7 +607,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
         message: "Zak iets dieper door je knieen om stabieler te staan.",
       },
       {
-        label: "Contacthoogte",
+        label: "Contactpunt",
         tag: "contact",
         value: dominant.contactHeight,
         min: 0.25,
@@ -625,7 +618,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
     ],
     Backhand: [
       {
-        label: "Ellebooghoek",
+        label: "Slagarm",
         tag: "elbow",
         value: dominant.elbowAngle,
         min: 90,
@@ -633,7 +626,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
         message: "Houd je backhand-arm iets rustiger en compacter.",
       },
       {
-        label: "Schouderhoek",
+        label: "Schouderpositie",
         tag: "shoulder",
         value: dominant.shoulderAngle,
         min: 35,
@@ -641,7 +634,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
         message: "Open je schouderlijn net iets meer richting de bal.",
       },
       {
-        label: "Kniebuiging",
+        label: "Beenwerk",
         tag: "knee",
         value: dominant.kneeAngle,
         min: 135,
@@ -660,7 +653,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
     ],
     Volley: [
       {
-        label: "Ellebooghoek",
+        label: "Slagarm",
         tag: "elbow",
         value: dominant.elbowAngle,
         min: 85,
@@ -668,7 +661,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
         message: "Houd je volley compact; laat je elleboog minder open vallen.",
       },
       {
-        label: "Schouderhoek",
+        label: "Schouderpositie",
         tag: "shoulder",
         value: dominant.shoulderAngle,
         min: 35,
@@ -676,7 +669,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
         message: "Houd je racket iets meer voor je lichaam bij de volley.",
       },
       {
-        label: "Kniebuiging",
+        label: "Beenwerk",
         tag: "knee",
         value: dominant.kneeAngle,
         min: 130,
@@ -684,7 +677,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
         message: "Werk lager vanuit je benen voor meer stabiliteit aan het net.",
       },
       {
-        label: "Contacthoogte",
+        label: "Contactpunt",
         tag: "contact",
         value: dominant.contactHeight,
         min: 0.45,
@@ -695,7 +688,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
     ],
     "Overhead / smash": [
       {
-        label: "Ellebooghoek",
+        label: "Slagarm",
         tag: "elbow",
         value: dominant.elbowAngle,
         min: 138,
@@ -703,7 +696,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
         message: "Strek je slagarm verder uit boven je hoofd voor meer lengte.",
       },
       {
-        label: "Schouderhoek",
+        label: "Schouderpositie",
         tag: "shoulder",
         value: dominant.shoulderAngle,
         min: 98,
@@ -711,7 +704,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
         message: "Breng je arm hoger in je trophy-positie voor de overhead.",
       },
       {
-        label: "Kniebuiging",
+        label: "Beenwerk",
         tag: "knee",
         value: dominant.kneeAngle,
         min: 130,
@@ -719,7 +712,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
         message: "Laad de overhead met iets meer beenwerk.",
       },
       {
-        label: "Contacthoogte",
+        label: "Contactpunt",
         tag: "contact",
         value: dominant.contactHeight,
         min: 1.05,
@@ -730,7 +723,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
     ],
     "Ready positie": [
       {
-        label: "Houding",
+        label: "Basishouding",
         tag: "knee",
         value: dominant.kneeAngle,
         min: 135,
@@ -738,7 +731,7 @@ function evaluateTechnique(stroke, metrics, handedness) {
         message: "Blijf licht door je knieen in je ready positie.",
       },
       {
-        label: "Armpositie",
+        label: "Racketpositie",
         tag: "balance",
         value: dominant.elbowAngle,
         min: 80,
@@ -794,27 +787,82 @@ function renderFeedback(items) {
   });
 }
 
-function renderAnglePlaceholder() {
-  anglesGrid.innerHTML = "";
-  JOINT_LABELS.forEach(([, label]) => {
-    const row = document.createElement("div");
-    row.className = "angle-row";
-    row.innerHTML = `<span>${label}</span><strong>--</strong>`;
-    anglesGrid.appendChild(row);
+function resetLiveFocusPanel() {
+  liveFocusHeadline.textContent = "Nog geen focuspunt";
+  liveFocusSummary.textContent =
+    "De coach vertaalt je techniek live naar een simpel, bruikbaar focuspunt.";
+  liveFocusList.innerHTML = "";
+  [
+    "Start de camera om een live focuspunt te krijgen.",
+    "De app gebruikt biomechanica intern, maar toont vooral coachbare aanwijzingen.",
+    "Zo blijft de feedback bruikbaar tijdens het spelen.",
+  ].forEach((text) => {
+    const item = document.createElement("li");
+    item.textContent = text;
+    liveFocusList.appendChild(item);
   });
 }
 
-function renderAngles(joints) {
-  anglesGrid.innerHTML = "";
-  JOINT_LABELS.forEach(([key, label]) => {
-    const row = document.createElement("div");
-    row.className = "angle-row";
-    row.innerHTML = `<span>${label}</span><strong>${joints[key]}°</strong>`;
-    anglesGrid.appendChild(row);
+function renderLiveFocusPanel(stroke, confidence, technique) {
+  const primaryIssue = technique.issues[0];
+  const issueLabel = primaryIssue
+    ? ISSUE_LIBRARY[primaryIssue.tag]?.label ?? primaryIssue.label.toLowerCase()
+    : "ritme";
+
+  if (stroke === "Ready positie") {
+    liveFocusHeadline.textContent = "Klaar voor de volgende bal";
+    liveFocusSummary.textContent =
+      "Nog geen duidelijke slag, dus de beste winst zit nu in basispositie, rust en klaarstaan.";
+    liveFocusList.innerHTML = "";
+    [
+      "Blijf licht door je benen en houd je racket compact voor je lichaam.",
+      "Zorg dat je vroeg klaar staat zodat de volgende slag beter herkenbaar en uitvoerbaar wordt.",
+      `Analysevertrouwen: ${Math.round(confidence * 100)}%.`,
+    ].forEach((text) => {
+      const item = document.createElement("li");
+      item.textContent = text;
+      liveFocusList.appendChild(item);
+    });
+    return;
+  }
+
+  liveFocusHeadline.textContent =
+    technique.score >= 85 ? `${stroke} vasthouden` : `${stroke}: focus op ${issueLabel}`;
+  liveFocusSummary.textContent =
+    technique.score >= 85
+      ? `Deze ${stroke.toLowerCase()} oogt stabiel. De coach zou nu vooral ritme en herhaalbaarheid bewaken.`
+      : `Voor deze ${stroke.toLowerCase()} zit de meeste winst nu in ${issueLabel}. De metingen blijven intern de basis, maar de coach vertaalt dat naar een direct bruikbare cue.`;
+
+  const focusItems = [...technique.feedback];
+  focusItems.push(
+    `Coachscore ${technique.score}/100 met ${Math.round(confidence * 100)}% herkenningszekerheid.`,
+  );
+
+  liveFocusList.innerHTML = "";
+  focusItems.slice(0, 3).forEach((text) => {
+    const item = document.createElement("li");
+    item.textContent = text;
+    liveFocusList.appendChild(item);
   });
 }
 
 function jointColor(stroke, key, value) {
+  const range = getJointRange(stroke, key);
+  if (!range) {
+    return "rgba(125, 200, 255, 0.9)";
+  }
+
+  const score = rangeScore(value, range[0], range[1], 20);
+  if (score >= 0.85) {
+    return "rgba(67, 224, 179, 0.95)";
+  }
+  if (score >= 0.55) {
+    return "rgba(255, 205, 109, 0.95)";
+  }
+  return "rgba(255, 111, 145, 0.95)";
+}
+
+function getJointRange(stroke, key) {
   const dominantKey =
     handednessSelect.value === "right"
       ? {
@@ -851,21 +899,51 @@ function jointColor(stroke, key, value) {
       rightKnee: [130, 165],
       leftKnee: [130, 165],
     },
+    "Ready positie": {
+      [dominantKey.elbow]: [80, 130],
+      [dominantKey.shoulder]: [35, 100],
+      rightKnee: [135, 170],
+      leftKnee: [135, 170],
+    },
   };
 
-  const range = ranges[stroke]?.[key];
+  return ranges[stroke]?.[key] ?? null;
+}
+
+function getJointCue(stroke, key, value) {
+  const range = getJointRange(stroke, key);
   if (!range) {
-    return "rgba(125, 200, 255, 0.9)";
+    return "";
   }
 
   const score = rangeScore(value, range[0], range[1], 20);
   if (score >= 0.85) {
-    return "rgba(67, 224, 179, 0.95)";
+    if (key.includes("Knee")) {
+      return "basis ok";
+    }
+    if (key.includes("Shoulder")) {
+      return "schouder ok";
+    }
+    return "arm ok";
   }
-  if (score >= 0.55) {
-    return "rgba(255, 205, 109, 0.95)";
+
+  if (value < range[0]) {
+    if (key.includes("Knee")) {
+      return "iets hoger";
+    }
+    if (key.includes("Shoulder")) {
+      return stroke === "Overhead / smash" ? "arm hoger" : "meer openen";
+    }
+    return "meer strekken";
   }
-  return "rgba(255, 111, 145, 0.95)";
+
+  if (key.includes("Knee")) {
+    return "lager";
+  }
+  if (key.includes("Shoulder")) {
+    return stroke === "Overhead / smash" ? "rustiger" : "minder open";
+  }
+  return "compacter";
 }
 
 function drawRoundedRect(x, y, width, height, radius) {
@@ -962,7 +1040,10 @@ function drawSkeleton(landmarks, joints, stroke) {
     context.fill();
 
     if (labelsToggle.checked) {
-      drawLabel(point, `${joints[key]}°`, color);
+      const cue = getJointCue(stroke, key, joints[key]);
+      if (cue) {
+        drawLabel(point, cue, color);
+      }
     }
   });
 }
@@ -1020,7 +1101,7 @@ function buildLiveFeedback(technique) {
   return items.slice(0, 3);
 }
 
-function updateLiveDashboard(stroke, confidence, joints, technique) {
+function updateLiveDashboard(stroke, confidence, technique) {
   const score = technique.score;
   state.currentStroke = stroke;
 
@@ -1037,12 +1118,12 @@ function updateLiveDashboard(stroke, confidence, joints, technique) {
     score >= 85 ? "Sterke techniek" : score >= 65 ? "Redelijke timing" : "Werkpunt gevonden";
   scoreSummary.textContent =
     score >= 85
-      ? "De gemeten hoeken liggen dicht bij de doelzone voor deze slag."
+      ? "Deze slag oogt technisch stabiel en goed herhaalbaar."
       : "Gebruik de coachingregels hieronder om de volgende herhalingen scherper te maken.";
 
   updateScoreRing(score);
   renderFeedback(buildLiveFeedback(technique));
-  renderAngles(joints);
+  renderLiveFocusPanel(stroke, confidence, technique);
 }
 
 function resetLiveDashboard() {
@@ -1055,13 +1136,13 @@ function resetLiveDashboard() {
   scoreValue.textContent = "--";
   techniqueBadge.textContent = "Nog geen meting";
   scoreSummary.textContent =
-    "Start de camera om hoeken, slagtype en techniek te meten.";
+    "Start de camera om slagkwaliteit, techniek en coaching live te meten.";
   trackingText.textContent = "Nog geen speler in beeld";
   strokeText.textContent = "Wachten";
   fpsChip.textContent = "0 FPS";
   updateScoreRing(0);
   renderFeedback(DEFAULT_LIVE_FEEDBACK);
-  renderAnglePlaceholder();
+  resetLiveFocusPanel();
 }
 
 function setInsightView(view) {
@@ -1934,7 +2015,7 @@ function analyseLoop(now) {
       drawSkeleton(smoothed, metrics.joints, stroke.name);
       updateTrackingTransform(smoothed);
       renderReadinessUi(readiness);
-      updateLiveDashboard(stroke.name, stroke.confidence, metrics.joints, technique);
+      updateLiveDashboard(stroke.name, stroke.confidence, technique);
       maybeRegisterStroke(stroke, technique, now);
 
       trackingText.textContent =
@@ -2016,7 +2097,7 @@ function boot() {
     renderFeedback([
       "Gebruik een moderne browser zoals Safari of Chrome op je telefoon.",
       "Open de app via https of localhost, anders blokkeert de browser de camera.",
-      "Daarna kun je de speler live laten volgen en de gewrichtshoeken tonen.",
+      "Daarna kun je de speler live laten volgen en coachfeedback tijdens de rally tonen.",
     ]);
     return;
   }
