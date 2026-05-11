@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0b1020" />
+    <meta
+      name="description"
+      content="Mobiele padel analyse-app met live spelertracking, skelet-overlay en gewrichtshoeken."
+    />
+    <title>Padel Motion Coach</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=DM+Sans:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="hero-card">
+        <div>
+          <p class="eyebrow">Live Padel Analyse</p>
+          <h1>Padel Motion Coach</h1>
+          <p class="hero-copy">
+            Volg een speler tijdens een rally, teken ledematen in beeld en laat
+            direct zien welke slag en welke techniek erbij hoort.
+          </p>
+        </div>
+        <div class="hero-badges">
+          <span>Camera</span>
+          <span>Player Tracking</span>
+          <span>Joint Angles</span>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="stage-card">
+          <div class="stage-topbar">
+            <div>
+              <p class="tiny-label">Analyse status</p>
+              <strong id="statusText">Klaar om de camera te starten</strong>
+            </div>
+            <span id="fpsChip" class="chip">0 FPS</span>
+          </div>
+
+          <div class="camera-stage">
+            <div id="trackingLayer" class="tracking-layer">
+              <video
+                id="cameraVideo"
+                playsinline
+                muted
+                autoplay
+                class="camera-video"
+              ></video>
+              <canvas id="overlayCanvas" class="overlay-canvas"></canvas>
+            </div>
+
+            <div id="emptyState" class="empty-state">
+              <div class="empty-state-card">
+                <p class="eyebrow">Mobiele Setup</p>
+                <h2>Richt je telefoon op de speler</h2>
+                <p>
+                  Plaats de camera liefst schuin achter de speler of ter hoogte
+                  van de zijlijn voor de duidelijkste slag- en hoekanalyse.
+                </p>
+                <button id="startButton" class="primary-button">
+                  Start camera-analyse
+                </button>
+              </div>
+            </div>
+
+            <div class="live-pill live-pill-left">
+              <span class="live-dot"></span>
+              <span id="trackingText">Nog geen speler in beeld</span>
+            </div>
+
+            <div class="live-pill live-pill-right">
+              <span>Slag</span>
+              <strong id="strokeText">Wachten</strong>
+            </div>
+          </div>
+
+          <div class="controls-grid">
+            <button id="stopButton" class="secondary-button" disabled>
+              Stop camera
+            </button>
+            <button id="switchButton" class="secondary-button" disabled>
+              Wissel camera
+            </button>
+            <label class="control">
+              <span>Speelhand</span>
+              <select id="handednessSelect">
+                <option value="right">Rechtshandig</option>
+                <option value="left">Linkshandig</option>
+              </select>
+            </label>
+            <label class="control toggle-control">
+              <span>Volg speler</span>
+              <input id="trackingToggle" type="checkbox" checked />
+            </label>
+            <label class="control toggle-control">
+              <span>Hoeklabels</span>
+              <input id="labelsToggle" type="checkbox" checked />
+            </label>
+          </div>
+        </section>
+
+        <section class="insight-grid">
+          <article class="insight-card score-card">
+            <div class="card-heading">
+              <p class="tiny-label">Techniekscore</p>
+              <strong id="techniqueBadge">Nog geen meting</strong>
+            </div>
+            <div class="score-ring">
+              <div class="score-ring-inner">
+                <strong id="scoreValue">--</strong>
+                <span>/100</span>
+              </div>
+            </div>
+            <p id="scoreSummary" class="support-copy">
+              Start de camera om hoeken, slagtype en techniek te meten.
+            </p>
+          </article>
+
+          <article class="insight-card">
+            <div class="card-heading">
+              <p class="tiny-label">Herkenning</p>
+              <strong id="detectionHeadline">Geen actieve slag</strong>
+            </div>
+            <p id="detectionDetail" class="support-copy">
+              Zodra de dominante arm versnelt, schat de app of het om een
+              forehand, backhand, volley of overhead gaat.
+            </p>
+            <div class="detection-metrics">
+              <div>
+                <span class="metric-label">Zekerheid</span>
+                <strong id="confidenceValue">0%</strong>
+              </div>
+              <div>
+                <span class="metric-label">Dominante arm</span>
+                <strong id="armValue">Rechts</strong>
+              </div>
+              <div>
+                <span class="metric-label">Tracking</span>
+                <strong id="focusValue">Automatisch</strong>
+              </div>
+            </div>
+          </article>
+
+          <article class="insight-card feedback-card">
+            <div class="card-heading">
+              <p class="tiny-label">Coaching</p>
+              <strong>Live aanwijzingen</strong>
+            </div>
+            <ul id="feedbackList" class="feedback-list">
+              <li>Houd de hele speler in beeld voor een complete meting.</li>
+              <li>Gebruik bij voorkeur de achtercamera voor meer detail.</li>
+              <li>De analyse is bedoeld als trainingshulp, niet als medische beoordeling.</li>
+            </ul>
+          </article>
+
+          <article class="insight-card angles-card">
+            <div class="card-heading">
+              <p class="tiny-label">Gewrichtshoeken</p>
+              <strong>Per ledemaat</strong>
+            </div>
+            <div id="anglesGrid" class="angles-grid">
+              <div class="angle-row">
+                <span>Rechter elleboog</span>
+                <strong>--</strong>
+              </div>
+              <div class="angle-row">
+                <span>Linker elleboog</span>
+                <strong>--</strong>
+              </div>
+              <div class="angle-row">
+                <span>Rechter schouder</span>
+                <strong>--</strong>
+              </div>
+              <div class="angle-row">
+                <span>Linker schouder</span>
+                <strong>--</strong>
+              </div>
+              <div class="angle-row">
+                <span>Rechter knie</span>
+                <strong>--</strong>
+              </div>
+              <div class="angle-row">
+                <span>Linker knie</span>
+                <strong>--</strong>
+              </div>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
