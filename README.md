@@ -12,6 +12,7 @@ Mobiele webapp voor live padel analyse met:
 - optionele sessie-opname die je na afloop kunt downloaden
 - live analyse-readiness zodat je ziet of de speler goed in beeld staat
 - mobiele inzichten per modus: `Live`, `Sessie` en `Coach`
+- meerlagige mobiele cockpit met een kernkaart per modus en horizontale detaildecks
 - recente slagentimeline, sterkste/zwakste slag en sessiesignaal
 - coachrapport met patronen, zwakke punten en trainingstips
 - exporteerbaar sessierapport en lokale opslag van je laatste sessiesamenvatting

@@ -331,6 +331,28 @@ select,
 .insight-grid {
   display: grid;
   gap: 1rem;
+  position: relative;
+  z-index: 2;
+}
+
+.insight-header {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.05rem 1rem 0;
+  border-radius: 28px 28px 20px 20px;
+  background: linear-gradient(
+    180deg,
+    rgba(13, 23, 37, 0.92) 0%,
+    rgba(13, 23, 37, 0.74) 100%
+  );
+  border: 1px solid rgba(132, 177, 255, 0.18);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+}
+
+.insight-header-copy {
+  display: grid;
+  gap: 0.45rem;
 }
 
 .insight-tabs {
@@ -356,9 +378,14 @@ select,
   border-color: transparent;
 }
 
-.insight-grid[data-active-view="live"] [data-panel]:not([data-panel="live"]),
-.insight-grid[data-active-view="session"] [data-panel]:not([data-panel="session"]),
-.insight-grid[data-active-view="coach"] [data-panel]:not([data-panel="coach"]) {
+.insight-stack {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.insight-grid[data-active-view="live"] .insight-stack:not([data-panel="live"]),
+.insight-grid[data-active-view="session"] .insight-stack:not([data-panel="session"]),
+.insight-grid[data-active-view="coach"] .insight-stack:not([data-panel="coach"]) {
   display: none;
 }
 
@@ -366,6 +393,57 @@ select,
   padding: 1rem;
   display: grid;
   gap: 1rem;
+}
+
+.primary-card {
+  background: var(--panel-strong);
+}
+
+.detail-rail {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(84%, 1fr);
+  gap: 0.9rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  padding-bottom: 0.2rem;
+}
+
+.detail-rail > .insight-card {
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+.detail-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.subsection-block {
+  display: grid;
+  gap: 0.9rem;
+  padding-top: 0.2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.live-primary.score-card {
+  justify-items: stretch;
+}
+
+.live-primary-layout {
+  display: grid;
+  gap: 1rem;
+  align-items: center;
+}
+
+.live-primary-copy {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.live-primary-copy strong {
+  font-size: clamp(1.5rem, 5vw, 2.15rem);
+  line-height: 0.95;
 }
 
 .session-hero,
@@ -508,6 +586,27 @@ select,
   .insight-grid {
     position: sticky;
     top: 1rem;
+    margin-top: 0;
+  }
+
+  .insight-header {
+    padding: 1.1rem;
+  }
+
+  .detail-rail {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    overflow: visible;
+    scroll-snap-type: none;
+    padding-bottom: 0;
+  }
+
+  .live-primary-layout {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .score-ring {
+    margin-inline: 0;
   }
 }
 
@@ -518,7 +617,8 @@ select,
 
   .hero-card,
   .stage-card,
-  .insight-card {
+  .insight-card,
+  .insight-header {
     border-radius: 24px;
   }
 
@@ -526,12 +626,19 @@ select,
     min-height: 52vh;
   }
 
-  .controls-grid,
+  .insight-grid {
+    margin-top: -1.25rem;
+  }
+
+  .controls-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .insight-tabs,
   .detection-metrics,
   .session-hero,
-  .session-summary-grid,
-  .insight-tabs {
-    grid-template-columns: 1fr;
+  .session-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .stage-topbar {
@@ -554,5 +661,9 @@ select,
     width: 100%;
     grid-auto-flow: column;
     justify-content: space-between;
+  }
+
+  .detail-rail {
+    grid-auto-columns: minmax(88%, 1fr);
   }
 }
