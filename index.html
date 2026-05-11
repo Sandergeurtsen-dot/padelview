@@ -125,7 +125,34 @@
         </section>
 
         <section class="insight-grid">
-          <article class="insight-card score-card">
+          <div class="insight-tabs">
+            <button
+              id="liveTabButton"
+              class="tab-button is-active"
+              data-insight-view="live"
+              type="button"
+            >
+              Live
+            </button>
+            <button
+              id="sessionTabButton"
+              class="tab-button"
+              data-insight-view="session"
+              type="button"
+            >
+              Sessie
+            </button>
+            <button
+              id="coachTabButton"
+              class="tab-button"
+              data-insight-view="coach"
+              type="button"
+            >
+              Coach
+            </button>
+          </div>
+
+          <article class="insight-card score-card" data-panel="live">
             <div class="card-heading">
               <p class="tiny-label">Techniekscore</p>
               <strong id="techniqueBadge">Nog geen meting</strong>
@@ -141,7 +168,7 @@
             </p>
           </article>
 
-          <article class="insight-card">
+          <article class="insight-card" data-panel="live">
             <div class="card-heading">
               <p class="tiny-label">Herkenning</p>
               <strong id="detectionHeadline">Geen actieve slag</strong>
@@ -166,7 +193,76 @@
             </div>
           </article>
 
-          <article class="insight-card session-card">
+          <article class="insight-card readiness-card" data-panel="live">
+            <div class="card-heading">
+              <p class="tiny-label">Analyse klaarheid</p>
+              <strong id="readinessHeadline">Beeld controleren</strong>
+            </div>
+            <div class="session-hero">
+              <div class="session-metric">
+                <span class="metric-label">Ready score</span>
+                <strong id="readinessScoreValue">--</strong>
+              </div>
+              <div class="session-metric">
+                <span class="metric-label">Zichtbaarheid</span>
+                <strong id="visibilityQualityValue">--</strong>
+              </div>
+              <div class="session-metric">
+                <span class="metric-label">Kadering</span>
+                <strong id="framingQualityValue">--</strong>
+              </div>
+            </div>
+            <p id="readinessSummary" class="support-copy">
+              Zorg dat de speler volledig in beeld is voordat je de sessie start.
+            </p>
+          </article>
+
+          <article class="insight-card feedback-card" data-panel="live">
+            <div class="card-heading">
+              <p class="tiny-label">Coaching</p>
+              <strong>Live aanwijzingen</strong>
+            </div>
+            <ul id="feedbackList" class="feedback-list">
+              <li>Houd de hele speler in beeld voor een complete meting.</li>
+              <li>Gebruik bij voorkeur de achtercamera voor meer detail.</li>
+              <li>De analyse is bedoeld als trainingshulp, niet als medische beoordeling.</li>
+            </ul>
+          </article>
+
+          <article class="insight-card angles-card" data-panel="live">
+            <div class="card-heading">
+              <p class="tiny-label">Gewrichtshoeken</p>
+              <strong>Per ledemaat</strong>
+            </div>
+            <div id="anglesGrid" class="angles-grid">
+              <div class="angle-row">
+                <span>Rechter elleboog</span>
+                <strong>--</strong>
+              </div>
+              <div class="angle-row">
+                <span>Linker elleboog</span>
+                <strong>--</strong>
+              </div>
+              <div class="angle-row">
+                <span>Rechter schouder</span>
+                <strong>--</strong>
+              </div>
+              <div class="angle-row">
+                <span>Linker schouder</span>
+                <strong>--</strong>
+              </div>
+              <div class="angle-row">
+                <span>Rechter knie</span>
+                <strong>--</strong>
+              </div>
+              <div class="angle-row">
+                <span>Linker knie</span>
+                <strong>--</strong>
+              </div>
+            </div>
+          </article>
+
+          <article class="insight-card session-card" data-panel="session">
             <div class="card-heading">
               <p class="tiny-label">Sessie</p>
               <strong id="sessionStatusText">Nog niet gestart</strong>
@@ -202,21 +298,38 @@
             <p id="sessionSummaryText" class="support-copy">
               Start een sessie om je slagen te tellen, te beoordelen en door de coach te laten samenvatten.
             </p>
+            <button id="exportSessionButton" class="secondary-button" disabled>
+              Exporteer sessierapport
+            </button>
           </article>
 
-          <article class="insight-card feedback-card">
+          <article class="insight-card" data-panel="session">
             <div class="card-heading">
-              <p class="tiny-label">Coaching</p>
-              <strong>Live aanwijzingen</strong>
+              <p class="tiny-label">Sessiesignaal</p>
+              <strong id="sessionFocusHeadline">Nog geen focus</strong>
             </div>
-            <ul id="feedbackList" class="feedback-list">
-              <li>Houd de hele speler in beeld voor een complete meting.</li>
-              <li>Gebruik bij voorkeur de achtercamera voor meer detail.</li>
-              <li>De analyse is bedoeld als trainingshulp, niet als medische beoordeling.</li>
+            <div class="session-hero">
+              <div class="session-metric">
+                <span class="metric-label">Sterkste slag</span>
+                <strong id="bestStrokeValue">--</strong>
+              </div>
+              <div class="session-metric">
+                <span class="metric-label">Zwakste slag</span>
+                <strong id="weakStrokeValue">--</strong>
+              </div>
+              <div class="session-metric">
+                <span class="metric-label">Goedreeks</span>
+                <strong id="streakValue">0</strong>
+              </div>
+            </div>
+            <ul id="sessionSignalList" class="feedback-list">
+              <li>De app laat hier je spelbeeld en momentum zien zodra de sessie loopt.</li>
+              <li>Na meerdere slagen zie je welke slag stabiel is en waar je vorm breekt.</li>
+              <li>Gebruik dit als snelle samenvatting tussen rally's door.</li>
             </ul>
           </article>
 
-          <article class="insight-card">
+          <article class="insight-card" data-panel="session">
             <div class="card-heading">
               <p class="tiny-label">Sessie statistieken</p>
               <strong>Per slagsoort</strong>
@@ -265,7 +378,19 @@
             </div>
           </article>
 
-          <article class="insight-card coach-card">
+          <article class="insight-card" data-panel="session">
+            <div class="card-heading">
+              <p class="tiny-label">Recente slagen</p>
+              <strong id="timelineHeadline">Nog geen slagen opgeslagen</strong>
+            </div>
+            <ul id="sessionTimelineList" class="feedback-list">
+              <li>Start een sessie om hier je recente slagen terug te zien.</li>
+              <li>De lijst laat per slag zien of de uitvoering goed of minder goed was.</li>
+              <li>Zo zie je snel of je momentum stijgt of juist wegvalt.</li>
+            </ul>
+          </article>
+
+          <article class="insight-card coach-card" data-panel="coach">
             <div class="card-heading">
               <p class="tiny-label">Coachrapport</p>
               <strong id="coachHeadline">Nog geen sessie-analyse</strong>
@@ -280,37 +405,38 @@
             </ul>
           </article>
 
-          <article class="insight-card angles-card">
+          <article class="insight-card" data-panel="coach">
             <div class="card-heading">
-              <p class="tiny-label">Gewrichtshoeken</p>
-              <strong>Per ledemaat</strong>
+              <p class="tiny-label">Trainingsfocus</p>
+              <strong id="focusBadge">Nog geen focusblok</strong>
             </div>
-            <div id="anglesGrid" class="angles-grid">
-              <div class="angle-row">
-                <span>Rechter elleboog</span>
-                <strong>--</strong>
+            <div class="session-hero">
+              <div class="session-metric">
+                <span class="metric-label">Volgende drill</span>
+                <strong id="nextDrillValue">--</strong>
               </div>
-              <div class="angle-row">
-                <span>Linker elleboog</span>
-                <strong>--</strong>
+              <div class="session-metric">
+                <span class="metric-label">Spelbeeld</span>
+                <strong id="gamePatternValue">--</strong>
               </div>
-              <div class="angle-row">
-                <span>Rechter schouder</span>
-                <strong>--</strong>
-              </div>
-              <div class="angle-row">
-                <span>Linker schouder</span>
-                <strong>--</strong>
-              </div>
-              <div class="angle-row">
-                <span>Rechter knie</span>
-                <strong>--</strong>
-              </div>
-              <div class="angle-row">
-                <span>Linker knie</span>
-                <strong>--</strong>
+              <div class="session-metric">
+                <span class="metric-label">Laatste sessie</span>
+                <strong id="savedSessionValue">--</strong>
               </div>
             </div>
+            <p id="focusSummary" class="support-copy">
+              De coach vertaalt je sessie straks naar een direct trainingsaccent voor je volgende blok.
+            </p>
+          </article>
+
+          <article class="insight-card angles-card" data-panel="coach">
+            <div class="card-heading">
+              <p class="tiny-label">Laatste sessie</p>
+              <strong id="savedHeadline">Nog niets opgeslagen</strong>
+            </div>
+            <p id="savedSummary" class="support-copy">
+              Na een afgeronde sessie bewaart de app lokaal je laatste samenvatting op dit toestel.
+            </p>
           </article>
         </section>
       </main>

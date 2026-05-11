@@ -7,6 +7,7 @@ const video = document.querySelector("#cameraVideo");
 const canvas = document.querySelector("#overlayCanvas");
 const context = canvas.getContext("2d");
 const trackingLayer = document.querySelector("#trackingLayer");
+const insightGrid = document.querySelector(".insight-grid");
 
 const statusText = document.querySelector("#statusText");
 const fpsChip = document.querySelector("#fpsChip");
@@ -36,6 +37,25 @@ const sessionStatsGrid = document.querySelector("#sessionStatsGrid");
 const coachHeadline = document.querySelector("#coachHeadline");
 const coachSummary = document.querySelector("#coachSummary");
 const coachList = document.querySelector("#coachList");
+const readinessHeadline = document.querySelector("#readinessHeadline");
+const readinessScoreValue = document.querySelector("#readinessScoreValue");
+const visibilityQualityValue = document.querySelector("#visibilityQualityValue");
+const framingQualityValue = document.querySelector("#framingQualityValue");
+const readinessSummary = document.querySelector("#readinessSummary");
+const sessionFocusHeadline = document.querySelector("#sessionFocusHeadline");
+const sessionSignalList = document.querySelector("#sessionSignalList");
+const bestStrokeValue = document.querySelector("#bestStrokeValue");
+const weakStrokeValue = document.querySelector("#weakStrokeValue");
+const streakValue = document.querySelector("#streakValue");
+const timelineHeadline = document.querySelector("#timelineHeadline");
+const sessionTimelineList = document.querySelector("#sessionTimelineList");
+const focusBadge = document.querySelector("#focusBadge");
+const nextDrillValue = document.querySelector("#nextDrillValue");
+const gamePatternValue = document.querySelector("#gamePatternValue");
+const savedSessionValue = document.querySelector("#savedSessionValue");
+const focusSummary = document.querySelector("#focusSummary");
+const savedHeadline = document.querySelector("#savedHeadline");
+const savedSummary = document.querySelector("#savedSummary");
 
 const startButton = document.querySelector("#startButton");
 const stopButton = document.querySelector("#stopButton");
@@ -44,9 +64,11 @@ const sessionStartButton = document.querySelector("#sessionStartButton");
 const sessionStopButton = document.querySelector("#sessionStopButton");
 const recordButton = document.querySelector("#recordButton");
 const downloadButton = document.querySelector("#downloadButton");
+const exportSessionButton = document.querySelector("#exportSessionButton");
 const handednessSelect = document.querySelector("#handednessSelect");
 const trackingToggle = document.querySelector("#trackingToggle");
 const labelsToggle = document.querySelector("#labelsToggle");
+const tabButtons = [...document.querySelectorAll("[data-insight-view]")];
 
 const CONNECTIONS = [
   [11, 12],
@@ -127,6 +149,11 @@ const DOMINANT = {
   },
 };
 
+const STORAGE_KEYS = {
+  insightView: "padel-motion-coach:view",
+  lastSession: "padel-motion-coach:last-session",
+};
+
 function createStrokeBuckets() {
   return STROKE_TYPES.reduce((acc, stroke) => {
     acc[stroke] = {
@@ -189,7 +216,33 @@ const state = {
   session: createSessionState(),
   strokeCandidate: null,
   recording: createRecordingState(),
+  readiness: null,
+  savedSession: null,
+  ui: {
+    insightView: "live",
+  },
 };
+
+function loadPersistedUiState() {
+  const savedView = readStorage(STORAGE_KEYS.insightView);
+  if (savedView && ["live", "session", "coach"].includes(savedView)) {
+    state.ui.insightView = savedView;
+  }
+
+  const savedSessionRaw = readStorage(STORAGE_KEYS.lastSession);
+  if (!savedSessionRaw) {
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(savedSessionRaw);
+    if (parsed && typeof parsed === "object") {
+      state.savedSession = parsed;
+    }
+  } catch {
+    state.savedSession = null;
+  }
+}
 
 function setStatus(message) {
   statusText.textContent = message;
@@ -216,6 +269,22 @@ function formatDuration(ms) {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function readStorage(key) {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStorage(key, value) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Ignore storage failures.
+  }
 }
 
 function smoothLandmarks(nextLandmarks) {
@@ -313,6 +382,55 @@ function computeMetrics(landmarks) {
     },
     shoulderWidth,
     stanceWidth,
+  };
+}
+
+function computeReadiness(landmarks) {
+  const keyIndexes = [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28];
+  const keyLandmarks = keyIndexes.map((index) => landmarks[index]);
+  const visibilityAverage =
+    keyLandmarks.reduce(
+      (sum, landmark) => sum + (landmark.visibility ?? landmark.presence ?? 1),
+      0,
+    ) / keyLandmarks.length;
+
+  const xs = keyLandmarks.map((landmark) => landmark.x);
+  const ys = keyLandmarks.map((landmark) => landmark.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const width = maxX - minX;
+  const height = maxY - minY;
+  const margin = Math.min(minX, 1 - maxX, minY, 1 - maxY);
+
+  const visibilityScore = Math.round(clamp(visibilityAverage, 0, 1) * 100);
+  const framingScore = Math.round(
+    clamp(width / 0.34, 0, 1) * 45 +
+      clamp(height / 0.62, 0, 1) * 35 +
+      clamp((margin + 0.08) / 0.16, 0, 1) * 20,
+  );
+  const score = Math.round(visibilityScore * 0.58 + framingScore * 0.42);
+  const status =
+    score >= 82 ? "Analyse klaar" : score >= 62 ? "Bijna goed" : "Beeld bijstellen";
+
+  let summary = "De speler staat goed in beeld voor betrouwbare slagregistratie.";
+  if (score < 62) {
+    summary =
+      margin < 0.03
+        ? "De speler raakt de rand van het beeld. Zet de telefoon iets verder weg of hoger."
+        : "Nog te weinig lichaamspunten zichtbaar. Zorg dat schouders, heupen en knieen volledig in beeld zijn.";
+  } else if (score < 82) {
+    summary =
+      "De analyse is bruikbaar, maar iets meer afstand of een stabielere framing maakt de coach nauwkeuriger.";
+  }
+
+  return {
+    score,
+    status,
+    visibilityScore,
+    framingScore,
+    summary,
   };
 }
 
@@ -946,6 +1064,264 @@ function resetLiveDashboard() {
   renderAnglePlaceholder();
 }
 
+function setInsightView(view) {
+  state.ui.insightView = view;
+  insightGrid.dataset.activeView = view;
+  tabButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.insightView === view);
+  });
+  writeStorage(STORAGE_KEYS.insightView, view);
+}
+
+function resetReadinessUi() {
+  state.readiness = null;
+  readinessHeadline.textContent = "Beeld controleren";
+  readinessScoreValue.textContent = "--";
+  visibilityQualityValue.textContent = "--";
+  framingQualityValue.textContent = "--";
+  readinessSummary.textContent =
+    "Zorg dat de speler volledig in beeld is voordat je de sessie start.";
+}
+
+function renderReadinessUi(readiness) {
+  state.readiness = readiness;
+  readinessHeadline.textContent = readiness.status;
+  readinessScoreValue.textContent = `${readiness.score}`;
+  visibilityQualityValue.textContent = `${readiness.visibilityScore}%`;
+  framingQualityValue.textContent = `${readiness.framingScore}%`;
+  readinessSummary.textContent = readiness.summary;
+}
+
+function getSessionInsights() {
+  const playedStrokes = STROKE_TYPES.map((stroke) => {
+    const bucket = state.session.byStroke[stroke];
+    return {
+      stroke,
+      total: bucket.total,
+      good: bucket.good,
+      bad: bucket.bad,
+      ratio: bucket.total ? Math.round((bucket.good / bucket.total) * 100) : 0,
+    };
+  }).filter((stroke) => stroke.total > 0);
+
+  const bestStroke = [...playedStrokes]
+    .filter((stroke) => stroke.total >= 1)
+    .sort((a, b) => b.ratio - a.ratio || b.total - a.total)[0] ?? null;
+  const weakStroke = [...playedStrokes]
+    .filter((stroke) => stroke.total >= 1)
+    .sort((a, b) => a.ratio - b.ratio || b.total - a.total)[0] ?? null;
+
+  let streak = 0;
+  for (let index = state.session.timeline.length - 1; index >= 0; index -= 1) {
+    if (!state.session.timeline[index].good) {
+      break;
+    }
+    streak += 1;
+  }
+
+  return {
+    playedStrokes,
+    bestStroke,
+    weakStroke,
+    streak,
+  };
+}
+
+function renderSessionSignals() {
+  const { bestStroke, weakStroke, streak } = getSessionInsights();
+
+  bestStrokeValue.textContent = bestStroke
+    ? `${bestStroke.stroke} (${bestStroke.ratio}%)`
+    : "--";
+  weakStrokeValue.textContent = weakStroke
+    ? `${weakStroke.stroke} (${weakStroke.ratio}%)`
+    : "--";
+  streakValue.textContent = String(streak);
+
+  if (state.session.totalStrokes === 0) {
+    sessionFocusHeadline.textContent = "Nog geen focus";
+    sessionSignalList.innerHTML = "";
+    [
+      "De app laat hier je spelbeeld en momentum zien zodra de sessie loopt.",
+      "Na meerdere slagen zie je welke slag stabiel is en waar je vorm breekt.",
+      "Gebruik dit als snelle samenvatting tussen rally's door.",
+    ].forEach((text) => {
+      const item = document.createElement("li");
+      item.textContent = text;
+      sessionSignalList.appendChild(item);
+    });
+    return;
+  }
+
+  sessionFocusHeadline.textContent =
+    streak >= 3
+      ? "Je hebt momentum"
+      : weakStroke
+        ? `${weakStroke.stroke} vraagt aandacht`
+        : "Sessiebeeld bouwt op";
+
+  const signalTexts = [];
+  if (bestStroke) {
+    signalTexts.push(
+      `${bestStroke.stroke} is nu je sterkste slag met ${bestStroke.ratio}% goede uitvoering.`,
+    );
+  }
+  if (weakStroke) {
+    signalTexts.push(
+      `${weakStroke.stroke} levert relatief de meeste missers op. Verlaag daar je tempo en focus op voorbereiding.`,
+    );
+  }
+  signalTexts.push(
+    streak >= 2
+      ? `Je huidige reeks staat op ${streak} goede slag${streak === 1 ? "" : "en"} achter elkaar.`
+      : "Je hebt nog geen langere goede reeks. Zoek eerst rust en herhaalbaarheid.",
+  );
+
+  sessionSignalList.innerHTML = "";
+  signalTexts.slice(0, 3).forEach((text) => {
+    const item = document.createElement("li");
+    item.textContent = text;
+    sessionSignalList.appendChild(item);
+  });
+}
+
+function renderTimeline() {
+  timelineHeadline.textContent =
+    state.session.timeline.length > 0
+      ? `Laatste ${Math.min(state.session.timeline.length, 6)} slagen`
+      : "Nog geen slagen opgeslagen";
+
+  sessionTimelineList.innerHTML = "";
+  if (state.session.timeline.length === 0) {
+    [
+      "Start een sessie om hier je recente slagen terug te zien.",
+      "De lijst laat per slag zien of de uitvoering goed of minder goed was.",
+      "Zo zie je snel of je momentum stijgt of juist wegvalt.",
+    ].forEach((text) => {
+      const item = document.createElement("li");
+      item.textContent = text;
+      sessionTimelineList.appendChild(item);
+    });
+    return;
+  }
+
+  const recent = [...state.session.timeline].slice(-6).reverse();
+  recent.forEach((entry, index) => {
+    const item = document.createElement("li");
+    item.textContent = `${index + 1}. ${entry.stroke} · ${entry.score}/100 · ${entry.good ? "goed" : "niet goed"}`;
+    sessionTimelineList.appendChild(item);
+  });
+}
+
+function createSessionSnapshot() {
+  const durationMs = getSessionDurationMs();
+  const { bestStroke, weakStroke } = getSessionInsights();
+  const averageScore =
+    state.session.totalStrokes > 0
+      ? Math.round(state.session.totalScore / state.session.totalStrokes)
+      : 0;
+
+  return {
+    createdAt: new Date().toISOString(),
+    durationMs,
+    totalStrokes: state.session.totalStrokes,
+    good: state.session.good,
+    bad: state.session.bad,
+    averageScore,
+    bestStroke: bestStroke?.stroke ?? "",
+    weakStroke: weakStroke?.stroke ?? "",
+    byStroke: state.session.byStroke,
+    weaknesses: state.session.weaknesses,
+    timeline: state.session.timeline,
+  };
+}
+
+function persistSessionSnapshot() {
+  const snapshot = createSessionSnapshot();
+  state.savedSession = snapshot;
+  writeStorage(STORAGE_KEYS.lastSession, JSON.stringify(snapshot));
+}
+
+function renderSavedSession() {
+  if (!state.savedSession || !state.savedSession.totalStrokes) {
+    savedSessionValue.textContent = "--";
+    savedHeadline.textContent = "Nog niets opgeslagen";
+    savedSummary.textContent =
+      "Na een afgeronde sessie bewaart de app lokaal je laatste samenvatting op dit toestel.";
+    return;
+  }
+
+  const quality = Math.round(
+    (state.savedSession.good / Math.max(state.savedSession.totalStrokes, 1)) * 100,
+  );
+  const dateLabel = new Date(state.savedSession.createdAt).toLocaleDateString("nl-NL", {
+    day: "numeric",
+    month: "short",
+  });
+
+  savedSessionValue.textContent = `${state.savedSession.totalStrokes} slagen`;
+  savedHeadline.textContent = `Laatste sessie · ${dateLabel}`;
+  savedSummary.textContent = `${state.savedSession.good} goed en ${state.savedSession.bad} niet goed, gemiddelde ${state.savedSession.averageScore}/100. Beste slag: ${state.savedSession.bestStroke || "n.v.t."}. Goedratio: ${quality}%.`;
+}
+
+function renderCoachFocus() {
+  const { bestStroke, weakStroke } = getSessionInsights();
+  const topIssue =
+    Object.entries(state.session.weaknesses).sort((a, b) => b[1] - a[1])[0] ?? ["", 0];
+
+  if (state.session.totalStrokes === 0) {
+    focusBadge.textContent = "Nog geen focusblok";
+    nextDrillValue.textContent = "--";
+    gamePatternValue.textContent = "--";
+    focusSummary.textContent =
+      "De coach vertaalt je sessie straks naar een direct trainingsaccent voor je volgende blok.";
+    if (state.savedSession?.totalStrokes) {
+      savedSessionValue.textContent = `${state.savedSession.totalStrokes} slagen`;
+    }
+    return;
+  }
+
+  const drillLabel =
+    topIssue[1] > 0 && ISSUE_LIBRARY[topIssue[0]]
+      ? ISSUE_LIBRARY[topIssue[0]].label
+      : weakStroke?.stroke ?? "basisritme";
+  const pattern =
+    bestStroke && weakStroke && bestStroke.stroke !== weakStroke.stroke
+      ? `${bestStroke.stroke} sterk, ${weakStroke.stroke} kwetsbaar`
+      : bestStroke
+        ? `${bestStroke.stroke} domineert je spelbeeld`
+        : "Nog te weinig variatie";
+
+  focusBadge.textContent =
+    weakStroke && weakStroke.ratio < 60 ? "Werkblok nodig" : "Volgende trainingsfocus";
+  nextDrillValue.textContent = drillLabel;
+  gamePatternValue.textContent = pattern;
+  focusSummary.textContent =
+    topIssue[1] > 0 && ISSUE_LIBRARY[topIssue[0]]
+      ? ISSUE_LIBRARY[topIssue[0]].tip
+      : "Blijf meerdere slagen per soort verzamelen zodat de coach een scherper drill-advies kan geven.";
+}
+
+function exportSessionReport() {
+  if (state.session.totalStrokes === 0 && !state.savedSession?.totalStrokes) {
+    return;
+  }
+
+  const snapshot =
+    state.session.totalStrokes > 0 ? createSessionSnapshot() : state.savedSession;
+  const blob = new Blob([JSON.stringify(snapshot, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `padel-session-report-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 function getSessionDurationMs() {
   if (!state.session.startedAt) {
     return 0;
@@ -1167,8 +1543,14 @@ function refreshSessionUi() {
   syncSessionButtons();
   renderSessionSummary();
   renderSessionStats();
+  renderSessionSignals();
+  renderTimeline();
   renderCoachReport();
+  renderCoachFocus();
+  renderSavedSession();
   updateRecordingUi();
+  exportSessionButton.disabled =
+    state.session.totalStrokes === 0 && !state.savedSession?.totalStrokes;
 }
 
 function registerSessionStroke(stroke, technique) {
@@ -1212,7 +1594,8 @@ function maybeRegisterStroke(stroke, technique, now) {
   const qualifies =
     stroke.name !== "Ready positie" &&
     stroke.confidence >= 0.58 &&
-    stroke.speed >= 0.28;
+    stroke.speed >= 0.28 &&
+    (state.readiness?.score ?? 0) >= 58;
 
   if (!qualifies) {
     if (state.strokeCandidate && now - state.strokeCandidate.lastSeenAt > 220) {
@@ -1379,6 +1762,10 @@ function endSession(reason = "manual") {
     stopRecording();
   }
 
+  if (state.session.totalStrokes > 0) {
+    persistSessionSnapshot();
+  }
+
   setStatus(
     reason === "cameraStopped"
       ? "Camera gestopt, sessie opgeslagen"
@@ -1496,6 +1883,7 @@ function stopCamera() {
   state.history = [];
   state.previousDominantWrist = null;
   state.strokeCandidate = null;
+  resetReadinessUi();
   resetLiveDashboard();
   refreshSessionUi();
 }
@@ -1539,11 +1927,13 @@ function analyseLoop(now) {
     if (landmarks) {
       const smoothed = smoothLandmarks(landmarks);
       const metrics = computeMetrics(smoothed);
+      const readiness = computeReadiness(smoothed);
       const stroke = classifyStroke(metrics, handednessSelect.value, now);
       const technique = evaluateTechnique(stroke.name, metrics, handednessSelect.value);
 
       drawSkeleton(smoothed, metrics.joints, stroke.name);
       updateTrackingTransform(smoothed);
+      renderReadinessUi(readiness);
       updateLiveDashboard(stroke.name, stroke.confidence, metrics.joints, technique);
       maybeRegisterStroke(stroke, technique, now);
 
@@ -1559,6 +1949,7 @@ function analyseLoop(now) {
       detectionDetail.textContent =
         "Zorg dat schouders, heupen en knieen in beeld blijven voor een stabiele analyse.";
       focusValue.textContent = trackingToggle.checked ? "Zoekt speler" : "Uit";
+      resetReadinessUi();
       renderFeedback([
         "Geen speler gedetecteerd. Houd schouders, heupen en knieen volledig in beeld.",
         state.session.active
@@ -1589,6 +1980,12 @@ function registerEvents() {
   sessionStopButton.addEventListener("click", () => endSession("manual"));
   recordButton.addEventListener("click", handleRecordButton);
   downloadButton.addEventListener("click", downloadRecording);
+  exportSessionButton.addEventListener("click", exportSessionReport);
+  tabButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      setInsightView(button.dataset.insightView);
+    });
+  });
 
   handednessSelect.addEventListener("change", () => {
     armValue.textContent = DOMINANT[handednessSelect.value].sideLabel;
@@ -1624,8 +2021,11 @@ function boot() {
     return;
   }
 
+  loadPersistedUiState();
   registerEvents();
   registerServiceWorker();
+  setInsightView(state.ui.insightView);
+  resetReadinessUi();
   resetLiveDashboard();
   refreshSessionUi();
 }

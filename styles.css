@@ -334,6 +334,35 @@ select,
   gap: 1rem;
 }
 
+.insight-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.tab-button {
+  min-height: 2.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.tab-button.is-active {
+  color: #04131d;
+  background: linear-gradient(135deg, var(--accent), #8af0ff);
+  border-color: transparent;
+}
+
+.insight-grid[data-active-view="live"] [data-panel]:not([data-panel="live"]),
+.insight-grid[data-active-view="session"] [data-panel]:not([data-panel="session"]),
+.insight-grid[data-active-view="coach"] [data-panel]:not([data-panel="coach"]) {
+  display: none;
+}
+
 .insight-card {
   padding: 1rem;
   display: grid;
@@ -389,6 +418,10 @@ select,
 
 .stroke-row-meta {
   justify-items: end;
+}
+
+#exportSessionButton {
+  width: 100%;
 }
 
 .score-card {
@@ -507,7 +540,8 @@ select,
   .controls-grid,
   .detection-metrics,
   .session-hero,
-  .session-summary-grid {
+  .session-summary-grid,
+  .insight-tabs {
     grid-template-columns: 1fr;
   }
 
