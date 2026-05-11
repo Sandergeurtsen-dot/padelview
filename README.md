@@ -9,10 +9,12 @@ Mobiele webapp voor live padel analyse met:
 - heuristische herkenning van `forehand`, `backhand`, `volley` en `overhead / smash`
 - trainingssessies met slagregistratie per slagsoort
 - telling van goede versus minder goede slagen per sessie
+- automatische eindsamenvatting zodra je een sessie stopt
 - optionele sessie-opname die je na afloop kunt downloaden
 - live analyse-readiness zodat je ziet of de speler goed in beeld staat
 - mobiele inzichten per modus: `Live`, `Sessie` en `Coach`
 - meerlagige mobiele cockpit met een kernkaart per modus en horizontale detaildecks
+- gescheiden `Acties` en `Instellingen` voor sneller gebruik op je telefoon
 - recente slagentimeline, sterkste/zwakste slag en sessiesignaal
 - coachrapport met patronen, zwakke punten en trainingstips
 - exporteerbaar sessierapport en lokale opslag van je laatste sessiesamenvatting

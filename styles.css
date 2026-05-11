@@ -145,8 +145,7 @@ h1 {
 
 .stage-topbar,
 .card-heading,
-.detection-metrics,
-.controls-grid {
+.detection-metrics {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -288,10 +287,28 @@ h1 {
   animation: pulse 1.8s infinite;
 }
 
-.controls-grid {
+.control-section {
   margin-top: 1rem;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.65rem;
+}
+
+.compact-heading {
+  align-items: end;
+}
+
+.actions-grid,
+.settings-grid {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.actions-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .control {
@@ -557,6 +574,53 @@ select,
   border-left: 3px solid rgba(125, 200, 255, 0.55);
 }
 
+.session-recap[hidden] {
+  display: none;
+}
+
+.session-recap {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+}
+
+.session-recap-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(4, 10, 18, 0.68);
+  backdrop-filter: blur(6px);
+}
+
+.session-recap-sheet {
+  position: absolute;
+  left: 0.8rem;
+  right: 0.8rem;
+  bottom: max(0.8rem, env(safe-area-inset-bottom));
+  display: grid;
+  gap: 1rem;
+  padding: 1.1rem;
+  border-radius: 28px;
+  background: rgba(10, 18, 29, 0.96);
+  border: 1px solid rgba(132, 177, 255, 0.18);
+  box-shadow: 0 28px 64px rgba(0, 0, 0, 0.42);
+}
+
+.session-recap-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.session-recap-actions {
+  display: grid;
+  gap: 0.75rem;
+}
+
+body.sheet-open {
+  overflow: hidden;
+}
+
 @keyframes pulse {
   0% {
     box-shadow: 0 0 0 0 rgba(255, 111, 145, 0.55);
@@ -579,8 +643,12 @@ select,
     padding: 1.15rem;
   }
 
-  .controls-grid {
-    grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  .actions-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .settings-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .insight-grid {
@@ -608,6 +676,12 @@ select,
   .score-ring {
     margin-inline: 0;
   }
+
+  .session-recap-sheet {
+    left: auto;
+    right: 1rem;
+    width: min(28rem, calc(100vw - 2rem));
+  }
 }
 
 @media (max-width: 560px) {
@@ -630,8 +704,12 @@ select,
     margin-top: -1.25rem;
   }
 
-  .controls-grid {
+  .actions-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-grid {
+    grid-template-columns: 1fr;
   }
 
   .insight-tabs,
@@ -665,5 +743,9 @@ select,
 
   .detail-rail {
     grid-auto-columns: minmax(88%, 1fr);
+  }
+
+  .session-recap-actions {
+    grid-template-columns: 1fr;
   }
 }

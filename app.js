@@ -58,6 +58,18 @@ const savedSessionValue = document.querySelector("#savedSessionValue");
 const focusSummary = document.querySelector("#focusSummary");
 const savedHeadline = document.querySelector("#savedHeadline");
 const savedSummary = document.querySelector("#savedSummary");
+const sessionRecap = document.querySelector("#sessionRecap");
+const sessionRecapBackdrop = document.querySelector("#sessionRecapBackdrop");
+const sessionRecapHeadline = document.querySelector("#sessionRecapHeadline");
+const sessionRecapSummary = document.querySelector("#sessionRecapSummary");
+const sessionRecapDurationValue = document.querySelector("#sessionRecapDurationValue");
+const sessionRecapTotalValue = document.querySelector("#sessionRecapTotalValue");
+const sessionRecapQualityValue = document.querySelector("#sessionRecapQualityValue");
+const sessionRecapAverageValue = document.querySelector("#sessionRecapAverageValue");
+const sessionRecapList = document.querySelector("#sessionRecapList");
+const sessionRecapCoachButton = document.querySelector("#sessionRecapCoachButton");
+const sessionRecapExportButton = document.querySelector("#sessionRecapExportButton");
+const sessionRecapCloseButton = document.querySelector("#sessionRecapCloseButton");
 
 const startButton = document.querySelector("#startButton");
 const stopButton = document.querySelector("#stopButton");
@@ -93,15 +105,15 @@ const STROKE_TYPES = ["Forehand", "Backhand", "Volley", "Overhead / smash"];
 const QUALITY_THRESHOLD = 74;
 
 const DEFAULT_LIVE_FEEDBACK = [
-  "Houd de hele speler in beeld voor een complete meting.",
-  "Gebruik bij voorkeur de achtercamera voor meer detail.",
-  "De analyse is bedoeld als trainingshulp, niet als medische beoordeling.",
+  "Houd de speler volledig in beeld.",
+  "Gebruik liefst de achtercamera.",
+  "Train hiermee, niet medisch beoordelen.",
 ];
 
 const DEFAULT_COACH_FEEDBACK = [
-  "Start een sessie om slagen over de hele rally heen op te slaan.",
-  "Na meerdere slagen ziet de coach welke slag het vaakst voorkomt en waar je techniek wegvalt.",
-  "Gebruik de sessietelling om goed versus minder goed uitgevoerde slagen te vergelijken.",
+  "Start een sessie voor patroonanalyse.",
+  "Na enkele slagen wordt de coach betrouwbaarder.",
+  "Vergelijk goed en niet goed per slagsoort.",
 ];
 
 const ISSUE_LIBRARY = {
@@ -789,13 +801,12 @@ function renderFeedback(items) {
 
 function resetLiveFocusPanel() {
   liveFocusHeadline.textContent = "Nog geen focuspunt";
-  liveFocusSummary.textContent =
-    "De coach vertaalt je techniek live naar een simpel, bruikbaar focuspunt.";
+  liveFocusSummary.textContent = "De coach vertaalt techniek live naar een kort focuspunt.";
   liveFocusList.innerHTML = "";
   [
-    "Start de camera om een live focuspunt te krijgen.",
-    "De app gebruikt biomechanica intern, maar toont vooral coachbare aanwijzingen.",
-    "Zo blijft de feedback bruikbaar tijdens het spelen.",
+    "Start de camera voor een live focuspunt.",
+    "De app meet intern, maar toont coachbare cues.",
+    "Zo blijft feedback bruikbaar tijdens het spelen.",
   ].forEach((text) => {
     const item = document.createElement("li");
     item.textContent = text;
@@ -812,11 +823,11 @@ function renderLiveFocusPanel(stroke, confidence, technique) {
   if (stroke === "Ready positie") {
     liveFocusHeadline.textContent = "Klaar voor de volgende bal";
     liveFocusSummary.textContent =
-      "Nog geen duidelijke slag, dus de beste winst zit nu in basispositie, rust en klaarstaan.";
+      "Nog geen duidelijke slag. Winst zit nu in basispositie en klaarstaan.";
     liveFocusList.innerHTML = "";
     [
       "Blijf licht door je benen en houd je racket compact voor je lichaam.",
-      "Zorg dat je vroeg klaar staat zodat de volgende slag beter herkenbaar en uitvoerbaar wordt.",
+      "Sta vroeg klaar zodat de volgende slag beter herkenbaar wordt.",
       `Analysevertrouwen: ${Math.round(confidence * 100)}%.`,
     ].forEach((text) => {
       const item = document.createElement("li");
@@ -830,8 +841,8 @@ function renderLiveFocusPanel(stroke, confidence, technique) {
     technique.score >= 85 ? `${stroke} vasthouden` : `${stroke}: focus op ${issueLabel}`;
   liveFocusSummary.textContent =
     technique.score >= 85
-      ? `Deze ${stroke.toLowerCase()} oogt stabiel. De coach zou nu vooral ritme en herhaalbaarheid bewaken.`
-      : `Voor deze ${stroke.toLowerCase()} zit de meeste winst nu in ${issueLabel}. De metingen blijven intern de basis, maar de coach vertaalt dat naar een direct bruikbare cue.`;
+      ? `Deze ${stroke.toLowerCase()} oogt stabiel. Bewaak vooral ritme en herhaalbaarheid.`
+      : `Voor deze ${stroke.toLowerCase()} zit de meeste winst nu in ${issueLabel}. De coach vertaalt dat direct naar een bruikbare cue.`;
 
   const focusItems = [...technique.feedback];
   focusItems.push(
@@ -1109,7 +1120,7 @@ function updateLiveDashboard(stroke, confidence, technique) {
   detectionHeadline.textContent = stroke;
   detectionDetail.textContent =
     stroke === "Ready positie"
-      ? "De speler staat klaar. Zodra de swing inzet, schat de app automatisch het slagtype."
+      ? "De speler staat klaar. Zodra de swing inzet, volgt automatische slagherkenning."
       : "Live inschatting op basis van armpositie, bewegingssnelheid en contacthoogte.";
   confidenceValue.textContent = `${Math.round(confidence * 100)}%`;
   armValue.textContent = DOMINANT[handednessSelect.value].sideLabel;
@@ -1129,7 +1140,7 @@ function updateLiveDashboard(stroke, confidence, technique) {
 function resetLiveDashboard() {
   detectionHeadline.textContent = "Geen actieve slag";
   detectionDetail.textContent =
-    "Zodra de dominante arm versnelt, schat de app of het om een forehand, backhand, volley of overhead gaat.";
+    "Zodra de dominante arm versnelt, herkent de app het slagtype.";
   confidenceValue.textContent = "0%";
   armValue.textContent = DOMINANT[handednessSelect.value].sideLabel;
   focusValue.textContent = trackingToggle.checked ? "Automatisch" : "Uit";
@@ -1160,8 +1171,7 @@ function resetReadinessUi() {
   readinessScoreValue.textContent = "--";
   visibilityQualityValue.textContent = "--";
   framingQualityValue.textContent = "--";
-  readinessSummary.textContent =
-    "Zorg dat de speler volledig in beeld is voordat je de sessie start.";
+  readinessSummary.textContent = "Zorg dat de speler volledig in beeld staat.";
 }
 
 function renderReadinessUi(readiness) {
@@ -1171,6 +1181,106 @@ function renderReadinessUi(readiness) {
   visibilityQualityValue.textContent = `${readiness.visibilityScore}%`;
   framingQualityValue.textContent = `${readiness.framingScore}%`;
   readinessSummary.textContent = readiness.summary;
+}
+
+function getSessionTopIssue(sessionData = state.session) {
+  return (
+    Object.entries(sessionData.weaknesses ?? {}).sort((a, b) => b[1] - a[1])[0] ?? ["", 0]
+  );
+}
+
+function getStrokeShortLabel(stroke) {
+  const labels = {
+    Forehand: "FH",
+    Backhand: "BH",
+    Volley: "V",
+    "Overhead / smash": "SM",
+  };
+
+  return labels[stroke] ?? stroke;
+}
+
+function buildStrokeBreakdown(byStroke) {
+  const line = STROKE_TYPES.map((stroke) => {
+    const total = byStroke?.[stroke]?.total ?? 0;
+    return total > 0 ? `${getStrokeShortLabel(stroke)} ${total}` : "";
+  })
+    .filter(Boolean)
+    .join(" · ");
+
+  return line || "Nog geen verdeling";
+}
+
+function closeSessionRecap() {
+  if (sessionRecap.hidden) {
+    return;
+  }
+
+  sessionRecap.hidden = true;
+  document.body.classList.remove("sheet-open");
+}
+
+function renderSessionRecap() {
+  const durationMs = getSessionDurationMs();
+  const { totalStrokes, good, bad, totalScore, byStroke } = state.session;
+  const averageScore = totalStrokes > 0 ? Math.round(totalScore / totalStrokes) : 0;
+  const goodRatio = totalStrokes > 0 ? Math.round((good / totalStrokes) * 100) : 0;
+  const { bestStroke, weakStroke } = getSessionInsights();
+  const topIssue = getSessionTopIssue();
+  const topIssueLabel =
+    topIssue[1] > 0 && ISSUE_LIBRARY[topIssue[0]]
+      ? ISSUE_LIBRARY[topIssue[0]].label
+      : weakStroke?.stroke ?? "basisritme";
+
+  sessionRecapDurationValue.textContent = formatDuration(durationMs);
+  sessionRecapTotalValue.textContent = String(totalStrokes);
+  sessionRecapQualityValue.textContent = totalStrokes > 0 ? `${goodRatio}%` : "--";
+  sessionRecapAverageValue.textContent = totalStrokes > 0 ? `${averageScore}/100` : "--";
+
+  if (totalStrokes === 0) {
+    sessionRecapHeadline.textContent = "Sessie klaar, nog geen slagdata";
+    sessionRecapSummary.textContent =
+      "Er zijn geen duidelijke slagen opgeslagen. Zet de speler voller in beeld en probeer opnieuw.";
+    sessionRecapList.innerHTML = "";
+    [
+      "Speel iets dichter in beeld of zet de telefoon verder weg.",
+      "Houd schouders, heupen en knieen zichtbaar.",
+      "Start daarna direct een nieuwe sessie.",
+    ].forEach((text) => {
+      const item = document.createElement("li");
+      item.textContent = text;
+      sessionRecapList.appendChild(item);
+    });
+    sessionRecapCoachButton.disabled = true;
+    sessionRecapExportButton.disabled = true;
+    return;
+  }
+
+  sessionRecapHeadline.textContent =
+    goodRatio >= 75 ? "Sterke sessie" : goodRatio >= 55 ? "Bruikbare sessie" : "Duidelijk werkblok";
+  sessionRecapSummary.textContent = `${good} goed, ${bad} niet goed en gemiddeld ${averageScore}/100 in ${formatDuration(durationMs)}.`;
+
+  const recapItems = [
+    `Sterkste slag: ${bestStroke ? `${bestStroke.stroke} (${bestStroke.ratio}% goed)` : "nog onduidelijk"}.`,
+    `Verdeling: ${buildStrokeBreakdown(byStroke)}.`,
+    `Volgende focus: ${topIssueLabel}.`,
+  ];
+
+  sessionRecapList.innerHTML = "";
+  recapItems.forEach((text) => {
+    const item = document.createElement("li");
+    item.textContent = text;
+    sessionRecapList.appendChild(item);
+  });
+
+  sessionRecapCoachButton.disabled = false;
+  sessionRecapExportButton.disabled = false;
+}
+
+function openSessionRecap() {
+  renderSessionRecap();
+  sessionRecap.hidden = false;
+  document.body.classList.add("sheet-open");
 }
 
 function getSessionInsights() {
@@ -1223,9 +1333,9 @@ function renderSessionSignals() {
     sessionFocusHeadline.textContent = "Nog geen focus";
     sessionSignalList.innerHTML = "";
     [
-      "De app laat hier je spelbeeld en momentum zien zodra de sessie loopt.",
-      "Na meerdere slagen zie je welke slag stabiel is en waar je vorm breekt.",
-      "Gebruik dit als snelle samenvatting tussen rally's door.",
+      "Hier zie je momentum en spelbeeld zodra de sessie loopt.",
+      "Na meerdere slagen wordt zichtbaar waar je vorm breekt.",
+      "Gebruik dit als snelle check tussen rally's door.",
     ].forEach((text) => {
       const item = document.createElement("li");
       item.textContent = text;
@@ -1275,9 +1385,9 @@ function renderTimeline() {
   sessionTimelineList.innerHTML = "";
   if (state.session.timeline.length === 0) {
     [
-      "Start een sessie om hier je recente slagen terug te zien.",
-      "De lijst laat per slag zien of de uitvoering goed of minder goed was.",
-      "Zo zie je snel of je momentum stijgt of juist wegvalt.",
+      "Start een sessie om je laatste slagen te zien.",
+      "Per slag zie je score en goed of niet goed.",
+      "Zo zie je snel of momentum stijgt of wegvalt.",
     ].forEach((text) => {
       const item = document.createElement("li");
       item.textContent = text;
@@ -1327,8 +1437,7 @@ function renderSavedSession() {
   if (!state.savedSession || !state.savedSession.totalStrokes) {
     savedSessionValue.textContent = "--";
     savedHeadline.textContent = "Nog niets opgeslagen";
-    savedSummary.textContent =
-      "Na een afgeronde sessie bewaart de app lokaal je laatste samenvatting op dit toestel.";
+    savedSummary.textContent = "Na een sessie bewaart de app lokaal je laatste samenvatting.";
     return;
   }
 
@@ -1347,15 +1456,13 @@ function renderSavedSession() {
 
 function renderCoachFocus() {
   const { bestStroke, weakStroke } = getSessionInsights();
-  const topIssue =
-    Object.entries(state.session.weaknesses).sort((a, b) => b[1] - a[1])[0] ?? ["", 0];
+  const topIssue = getSessionTopIssue();
 
   if (state.session.totalStrokes === 0) {
     focusBadge.textContent = "Nog geen focusblok";
     nextDrillValue.textContent = "--";
     gamePatternValue.textContent = "--";
-    focusSummary.textContent =
-      "De coach vertaalt je sessie straks naar een direct trainingsaccent voor je volgende blok.";
+    focusSummary.textContent = "De coach vertaalt je sessie straks naar een volgend trainingsaccent.";
     if (state.savedSession?.totalStrokes) {
       savedSessionValue.textContent = `${state.savedSession.totalStrokes} slagen`;
     }
@@ -1443,8 +1550,7 @@ function buildCoachReport() {
   if (totalStrokes === 0) {
     return {
       headline: "Nog geen sessie-analyse",
-      summary:
-        "Start een sessie om slagen te tellen, techniek te scoren en een coachrapport op te bouwen.",
+      summary: "Start een sessie om slagen te tellen en een coachrapport op te bouwen.",
       tips: DEFAULT_COACH_FEEDBACK,
     };
   }
@@ -1454,12 +1560,11 @@ function buildCoachReport() {
       headline: state.session.active
         ? "Coach verzamelt nog rally-data"
         : "Coach heeft nog weinig sessiedata",
-      summary:
-        "Er zijn al slagen geregistreerd, maar nog niet genoeg voor een stabiel patroon. Speel nog een paar duidelijke rallyslagen.",
+      summary: "Er zijn al slagen geregistreerd, maar nog niet genoeg voor een stabiel patroon.",
       tips: [
-        "Houd dezelfde speler volledig in beeld zodat de coach slagen niet mist.",
-        "Maak je swing duidelijk af; korte twijfelbeelden worden minder snel als slag opgeslagen.",
-        "Na ongeveer drie of meer slagen wordt de analyse per slagsoort betrouwbaarder.",
+        "Houd dezelfde speler volledig in beeld.",
+        "Maak je swing duidelijk af.",
+        "Na drie of meer slagen wordt de analyse betrouwbaarder.",
       ],
     };
   }
@@ -1565,14 +1670,14 @@ function renderSessionSummary() {
 
   if (!startedAt) {
     sessionSummaryText.textContent =
-      "Start een sessie om je slagen te tellen, te beoordelen en door de coach te laten samenvatten.";
+      "Start een sessie voor telling, beoordeling en een eindsamenvatting.";
     return;
   }
 
   if (totalStrokes === 0) {
     sessionSummaryText.textContent = active
-      ? "De sessie is gestart. Zodra een slag duidelijk genoeg herkend wordt, telt de app hem mee."
-      : "De sessie is gestopt zonder duidelijke geregistreerde slagen.";
+      ? "Sessie loopt. Wacht op de eerste duidelijke slag."
+      : "Sessie klaar zonder duidelijke opgeslagen slagen.";
     return;
   }
 
@@ -1583,7 +1688,7 @@ function renderSessionSummary() {
       total: state.session.byStroke[stroke].total,
     })).sort((a, b) => b.total - a.total)[0]?.stroke ?? "geen slag";
 
-  sessionSummaryText.textContent = `${topStroke} was je meest gespeelde slag. Tot nu toe staan ${good} slagen als goed en ${bad} als niet goed, met een gemiddelde techniek van ${averageScore}/100.`;
+  sessionSummaryText.textContent = `${topStroke} voorop · ${good} goed · ${bad} niet goed · gem. ${averageScore}/100.`;
 }
 
 function syncSessionButtons() {
@@ -1815,13 +1920,14 @@ function downloadRecording() {
 function startSession() {
   if (!state.running) {
     renderFeedback([
-      "Start eerst de camera-analyse voordat je een sessie begint.",
-      "Daarna kan de app per slag registreren wat goed en minder goed ging.",
-      "De coach bouwt zijn analyse op vanuit die sessiegegevens.",
+      "Start eerst de camera-analyse.",
+      "Daarna kan de app slagen per sessie registreren.",
+      "De coach bouwt analyse op vanuit die sessiedata.",
     ]);
     return;
   }
 
+  closeSessionRecap();
   state.session = createSessionState();
   state.session.active = true;
   state.session.startedAt = Date.now();
@@ -1853,6 +1959,7 @@ function endSession(reason = "manual") {
       : "Trainingssessie afgerond",
   );
   refreshSessionUi();
+  openSessionRecap();
 }
 
 function resizeCanvasToVideo() {
@@ -1933,12 +2040,13 @@ async function startCamera() {
     renderFeedback([
       "De camera of het pose-model kon niet worden gestart.",
       "Open de app via https of localhost en geef cameratoegang.",
-      "De eerste keer moet ook het externe pose-model geladen kunnen worden.",
+      "De eerste keer moet ook het externe pose-model laden.",
     ]);
   }
 }
 
 function stopCamera() {
+  closeSessionRecap();
   if (state.session.active) {
     endSession("cameraStopped");
   }
@@ -2062,6 +2170,13 @@ function registerEvents() {
   recordButton.addEventListener("click", handleRecordButton);
   downloadButton.addEventListener("click", downloadRecording);
   exportSessionButton.addEventListener("click", exportSessionReport);
+  sessionRecapBackdrop.addEventListener("click", closeSessionRecap);
+  sessionRecapCloseButton.addEventListener("click", closeSessionRecap);
+  sessionRecapCoachButton.addEventListener("click", () => {
+    closeSessionRecap();
+    setInsightView("coach");
+  });
+  sessionRecapExportButton.addEventListener("click", exportSessionReport);
   tabButtons.forEach((button) => {
     button.addEventListener("click", () => {
       setInsightView(button.dataset.insightView);
@@ -2077,6 +2192,11 @@ function registerEvents() {
   });
 
   window.addEventListener("resize", resizeCanvasToVideo);
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeSessionRecap();
+    }
+  });
 }
 
 async function registerServiceWorker() {

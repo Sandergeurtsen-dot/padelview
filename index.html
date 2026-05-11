@@ -29,8 +29,8 @@
           <p class="eyebrow">Live Padel Analyse</p>
           <h1>Padel Motion Coach</h1>
           <p class="hero-copy">
-            Volg een speler tijdens een rally, herken slagen live en vertaal
-            techniek direct naar bruikbare coachtips op je telefoon.
+            Volg een speler, herken slagen live en krijg direct bruikbare
+            coachcues op je telefoon.
           </p>
         </div>
         <div class="hero-badges">
@@ -68,8 +68,7 @@
                 <h2>Richt je telefoon op de speler</h2>
                 <p>
                   Plaats de camera liefst schuin achter de speler of ter hoogte
-                  van de zijlijn voor de duidelijkste slaganalyse en
-                  techniekcoaching.
+                  van de zijlijn voor de duidelijkste herkenning.
                 </p>
                 <button id="startButton" class="primary-button">
                   Start camera-analyse
@@ -88,40 +87,55 @@
             </div>
           </div>
 
-          <div class="controls-grid">
-            <button id="stopButton" class="secondary-button" disabled>
-              Stop camera
-            </button>
-            <button id="switchButton" class="secondary-button" disabled>
-              Wissel camera
-            </button>
-            <button id="sessionStartButton" class="primary-button" disabled>
-              Start sessie
-            </button>
-            <button id="sessionStopButton" class="secondary-button" disabled>
-              Eindig sessie
-            </button>
-            <button id="recordButton" class="secondary-button" disabled>
-              Start opname
-            </button>
-            <button id="downloadButton" class="secondary-button" disabled>
-              Download opname
-            </button>
-            <label class="control">
-              <span>Speelhand</span>
-              <select id="handednessSelect">
-                <option value="right">Rechtshandig</option>
-                <option value="left">Linkshandig</option>
-              </select>
-            </label>
-            <label class="control toggle-control">
-              <span>Volg speler</span>
-              <input id="trackingToggle" type="checkbox" checked />
-            </label>
-            <label class="control toggle-control">
-              <span>Technieklabels</span>
-              <input id="labelsToggle" type="checkbox" />
-            </label>
+          <div class="control-section">
+            <div class="card-heading compact-heading">
+              <p class="tiny-label">Acties</p>
+              <strong>Snel starten en afronden</strong>
+            </div>
+            <div class="actions-grid">
+              <button id="sessionStartButton" class="primary-button" disabled>
+                Start sessie
+              </button>
+              <button id="sessionStopButton" class="secondary-button" disabled>
+                Eindig sessie
+              </button>
+              <button id="recordButton" class="secondary-button" disabled>
+                Start opname
+              </button>
+              <button id="downloadButton" class="secondary-button" disabled>
+                Download opname
+              </button>
+              <button id="switchButton" class="secondary-button" disabled>
+                Wissel camera
+              </button>
+              <button id="stopButton" class="secondary-button" disabled>
+                Stop camera
+              </button>
+            </div>
+          </div>
+
+          <div class="control-section">
+            <div class="card-heading compact-heading">
+              <p class="tiny-label">Instellingen</p>
+              <strong>Kleine finetuning</strong>
+            </div>
+            <div class="settings-grid">
+              <label class="control">
+                <span>Speelhand</span>
+                <select id="handednessSelect">
+                  <option value="right">Rechtshandig</option>
+                  <option value="left">Linkshandig</option>
+                </select>
+              </label>
+              <label class="control toggle-control">
+                <span>Volg speler</span>
+                <input id="trackingToggle" type="checkbox" checked />
+              </label>
+              <label class="control toggle-control">
+                <span>Technieklabels</span>
+                <input id="labelsToggle" type="checkbox" />
+              </label>
+            </div>
           </div>
         </section>
 
@@ -131,8 +145,7 @@
               <p class="tiny-label">Coach Cockpit</p>
               <strong>Werk in lagen in plaats van in een lange lijst</strong>
               <p class="support-copy">
-                Eerst je kernsignaal, daarna pas de details. Zo blijft de app
-                sneller leesbaar tijdens het spelen.
+                Eerst je kernsignaal, daarna pas de details.
               </p>
             </div>
             <div class="insight-tabs">
@@ -183,8 +196,7 @@
                     Start de camera om slagkwaliteit, techniek en coaching live te meten.
                   </p>
                   <p id="detectionDetail" class="support-copy">
-                    Zodra de dominante arm versnelt, schat de app of het om een
-                    forehand, backhand, volley of overhead gaat.
+                    Herkenning op armpositie, snelheid en contacthoogte.
                   </p>
                 </div>
               </div>
@@ -225,7 +237,7 @@
                   </div>
                 </div>
                 <p id="readinessSummary" class="support-copy">
-                  Zorg dat de speler volledig in beeld is voordat je de sessie start.
+                  Zorg dat de speler volledig in beeld staat.
                 </p>
               </article>
 
@@ -235,9 +247,9 @@
                   <strong>Live aanwijzingen</strong>
                 </div>
                 <ul id="feedbackList" class="feedback-list">
-                  <li>Houd de hele speler in beeld voor een complete meting.</li>
-                  <li>Gebruik bij voorkeur de achtercamera voor meer detail.</li>
-                  <li>De analyse is bedoeld als trainingshulp, niet als medische beoordeling.</li>
+                  <li>Houd de speler volledig in beeld.</li>
+                  <li>Gebruik bij voorkeur de achtercamera.</li>
+                  <li>Train hiermee, niet medisch beoordelen.</li>
                 </ul>
               </article>
 
@@ -247,12 +259,12 @@
                   <strong id="liveFocusHeadline">Nog geen focuspunt</strong>
                 </div>
                 <p id="liveFocusSummary" class="support-copy">
-                  De coach vertaalt je techniek live naar een simpel, bruikbaar focuspunt.
+                  De coach vertaalt je techniek live naar een kort focuspunt.
                 </p>
                 <ul id="liveFocusList" class="feedback-list">
-                  <li>Start de camera om een live focuspunt te krijgen.</li>
-                  <li>De app gebruikt biomechanica intern, maar toont vooral coachbare aanwijzingen.</li>
-                  <li>Zo blijft de feedback bruikbaar tijdens het spelen.</li>
+                  <li>Start de camera voor een live focuspunt.</li>
+                  <li>De app meet intern, maar toont vooral coachbare cues.</li>
+                  <li>Zo blijft feedback bruikbaar tijdens het spelen.</li>
                 </ul>
               </article>
             </div>
@@ -293,7 +305,7 @@
                 </div>
               </div>
               <p id="sessionSummaryText" class="support-copy">
-                Start een sessie om je slagen te tellen, te beoordelen en door de coach te laten samenvatten.
+                Start een sessie voor telling, beoordeling en een eindsamenvatting.
               </p>
 
               <div class="subsection-block">
@@ -316,9 +328,9 @@
                   </div>
                 </div>
                 <ul id="sessionSignalList" class="feedback-list">
-                  <li>De app laat hier je spelbeeld en momentum zien zodra de sessie loopt.</li>
-                  <li>Na meerdere slagen zie je welke slag stabiel is en waar je vorm breekt.</li>
-                  <li>Gebruik dit als snelle samenvatting tussen rally's door.</li>
+                  <li>Hier zie je momentum en spelbeeld zodra de sessie loopt.</li>
+                  <li>Na meerdere slagen wordt zichtbaar waar je vorm breekt.</li>
+                  <li>Gebruik dit als snelle check tussen rally's door.</li>
                 </ul>
               </div>
 
@@ -383,9 +395,9 @@
                   <strong id="timelineHeadline">Nog geen slagen opgeslagen</strong>
                 </div>
                 <ul id="sessionTimelineList" class="feedback-list">
-                  <li>Start een sessie om hier je recente slagen terug te zien.</li>
-                  <li>De lijst laat per slag zien of de uitvoering goed of minder goed was.</li>
-                  <li>Zo zie je snel of je momentum stijgt of juist wegvalt.</li>
+                  <li>Start een sessie om je laatste slagen te zien.</li>
+                  <li>Per slag zie je score en goed of niet goed.</li>
+                  <li>Zo zie je snel of momentum stijgt of wegvalt.</li>
                 </ul>
               </article>
             </div>
@@ -398,12 +410,12 @@
                 <strong id="coachHeadline">Nog geen sessie-analyse</strong>
               </div>
               <p id="coachSummary" class="support-copy">
-                Na een paar slagen vat de coach je spel samen met sterke punten, terugkerende fouten en concrete trainingsaccenten.
+                Na een paar slagen vat de coach je spel samen in sterke punten, fouten en focus.
               </p>
               <ul id="coachList" class="feedback-list">
-                <li>Start een sessie om slagen over de hele rally heen op te slaan.</li>
-                <li>Na meerdere slagen ziet de coach welke slag het vaakst voorkomt en waar je techniek wegvalt.</li>
-                <li>Gebruik de sessietelling om goed versus minder goed uitgevoerde slagen te vergelijken.</li>
+                <li>Start een sessie om patronen op te bouwen.</li>
+                <li>Na enkele slagen ziet de coach wat vaak terugkomt.</li>
+                <li>Vergelijk goed en niet goed per slagsoort.</li>
               </ul>
 
               <div class="subsection-block">
@@ -426,7 +438,7 @@
                   </div>
                 </div>
                 <p id="focusSummary" class="support-copy">
-                  De coach vertaalt je sessie straks naar een direct trainingsaccent voor je volgende blok.
+                  De coach vertaalt je sessie naar je volgende trainingsaccent.
                 </p>
               </div>
             </article>
@@ -445,6 +457,64 @@
           </div>
         </section>
       </main>
+    </div>
+
+    <div id="sessionRecap" class="session-recap" hidden>
+      <button
+        id="sessionRecapBackdrop"
+        class="session-recap-backdrop"
+        type="button"
+        aria-label="Sluit sessiesamenvatting"
+      ></button>
+      <section
+        class="session-recap-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="sessionRecapHeadline"
+      >
+        <div class="card-heading">
+          <p class="tiny-label">Sessie klaar</p>
+          <strong id="sessionRecapHeadline">Samenvatting wordt geladen</strong>
+        </div>
+        <p id="sessionRecapSummary" class="support-copy">
+          Hier zie je direct wat deze sessie opleverde.
+        </p>
+
+        <div class="session-recap-grid">
+          <div class="session-summary-box">
+            <span class="metric-label">Tijd</span>
+            <strong id="sessionRecapDurationValue">00:00</strong>
+          </div>
+          <div class="session-summary-box">
+            <span class="metric-label">Slagen</span>
+            <strong id="sessionRecapTotalValue">0</strong>
+          </div>
+          <div class="session-summary-box">
+            <span class="metric-label">Goedratio</span>
+            <strong id="sessionRecapQualityValue">--</strong>
+          </div>
+          <div class="session-summary-box">
+            <span class="metric-label">Gemiddeld</span>
+            <strong id="sessionRecapAverageValue">--</strong>
+          </div>
+        </div>
+
+        <ul id="sessionRecapList" class="feedback-list">
+          <li>De coach maakt hier straks een korte recap van je sessie.</li>
+        </ul>
+
+        <div class="session-recap-actions">
+          <button id="sessionRecapCoachButton" class="primary-button" type="button">
+            Bekijk coach
+          </button>
+          <button id="sessionRecapExportButton" class="secondary-button" type="button">
+            Exporteer
+          </button>
+          <button id="sessionRecapCloseButton" class="secondary-button" type="button">
+            Sluit
+          </button>
+        </div>
+      </section>
     </div>
 
     <script type="module" src="./app.js"></script>
