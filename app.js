@@ -6,6 +6,7 @@ import {
 const video = document.querySelector("#cameraVideo");
 const canvas = document.querySelector("#overlayCanvas");
 const context = canvas.getContext("2d");
+const cameraStage = document.querySelector(".camera-stage");
 const trackingLayer = document.querySelector("#trackingLayer");
 const insightGrid = document.querySelector(".insight-grid");
 
@@ -70,12 +71,15 @@ const sessionRecapList = document.querySelector("#sessionRecapList");
 const sessionRecapCoachButton = document.querySelector("#sessionRecapCoachButton");
 const sessionRecapExportButton = document.querySelector("#sessionRecapExportButton");
 const sessionRecapCloseButton = document.querySelector("#sessionRecapCloseButton");
+const playerLockStatusText = document.querySelector("#playerLockStatusText");
+const playerLockHint = document.querySelector("#playerLockHint");
 
 const startButton = document.querySelector("#startButton");
 const stopButton = document.querySelector("#stopButton");
 const switchButton = document.querySelector("#switchButton");
 const sessionStartButton = document.querySelector("#sessionStartButton");
 const sessionStopButton = document.querySelector("#sessionStopButton");
+const selectPlayerButton = document.querySelector("#selectPlayerButton");
 const recordButton = document.querySelector("#recordButton");
 const downloadButton = document.querySelector("#downloadButton");
 const exportSessionButton = document.querySelector("#exportSessionButton");
@@ -218,6 +222,12 @@ const state = {
   currentStroke: "Wachten",
   tracking: { x: 0, y: 0, scale: 1 },
   history: [],
+  playerLock: {
+    selectionMode: false,
+    target: null,
+    candidates: [],
+    lostFrames: 0,
+  },
   session: createSessionState(),
   strokeCandidate: null,
   recording: createRecordingState(),
@@ -387,6 +397,57 @@ function computeMetrics(landmarks) {
     },
     shoulderWidth,
     stanceWidth,
+  };
+}
+
+function computePoseBounds(landmarks) {
+  const keyIndexes = [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28];
+  const xs = keyIndexes.map((index) => clamp(landmarks[index].x, 0, 1));
+  const ys = keyIndexes.map((index) => clamp(landmarks[index].y, 0, 1));
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+
+  return {
+    minX,
+    maxX,
+    minY,
+    maxY,
+    width: maxX - minX,
+    height: maxY - minY,
+    center: {
+      x: (minX + maxX) / 2,
+      y: (minY + maxY) / 2,
+    },
+  };
+}
+
+function createPoseCandidate(landmarks, index) {
+  const keyIndexes = [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28];
+  const visibility =
+    keyIndexes.reduce(
+      (sum, landmarkIndex) =>
+        sum + (landmarks[landmarkIndex].visibility ?? landmarks[landmarkIndex].presence ?? 1),
+      0,
+    ) / keyIndexes.length;
+  const bounds = computePoseBounds(landmarks);
+  const metrics = computeMetrics(landmarks);
+  const torsoHeight = Math.max(
+    Math.abs(metrics.points.hipCenter.y - metrics.points.shoulderCenter.y),
+    0.001,
+  );
+
+  return {
+    id: `pose-${index}`,
+    index,
+    landmarks,
+    metrics,
+    bounds,
+    center: bounds.center,
+    visibility,
+    shoulderWidth: metrics.shoulderWidth,
+    torsoHeight,
   };
 }
 
@@ -1079,8 +1140,10 @@ function updateTrackingTransform(landmarks) {
   const centerY = (minY + maxY) / 2;
 
   const desiredScale = clamp(0.54 / width, 1, 1.45);
-  const desiredX = (0.5 - centerX) * canvas.clientWidth * desiredScale;
-  const desiredY = (0.45 - centerY) * canvas.clientHeight * desiredScale;
+  const desiredX =
+    canvas.clientWidth * 0.5 - centerX * canvas.clientWidth * desiredScale;
+  const desiredY =
+    canvas.clientHeight * 0.45 - centerY * canvas.clientHeight * desiredScale;
 
   state.tracking.x += (desiredX - state.tracking.x) * 0.18;
   state.tracking.y += (desiredY - state.tracking.y) * 0.18;
@@ -1181,6 +1244,299 @@ function renderReadinessUi(readiness) {
   visibilityQualityValue.textContent = `${readiness.visibilityScore}%`;
   framingQualityValue.textContent = `${readiness.framingScore}%`;
   readinessSummary.textContent = readiness.summary;
+}
+
+function resetPlayerLock(preserveTarget = false) {
+  state.playerLock.selectionMode = false;
+  state.playerLock.candidates = [];
+  state.playerLock.lostFrames = 0;
+  if (!preserveTarget) {
+    state.playerLock.target = null;
+  }
+  state.smoothedLandmarks = null;
+  state.previousDominantWrist = null;
+  state.history = [];
+  state.strokeCandidate = null;
+}
+
+function updatePlayerLockUi() {
+  selectPlayerButton.disabled = !state.running;
+
+  if (state.playerLock.selectionMode) {
+    selectPlayerButton.textContent = state.playerLock.target
+      ? "Kies andere speler"
+      : "Tik op speler";
+    playerLockStatusText.textContent = "Selectiemodus";
+    playerLockHint.textContent = "Tik op de speler die je de hele sessie wilt volgen.";
+    return;
+  }
+
+  selectPlayerButton.textContent = state.playerLock.target
+    ? "Kies andere speler"
+    : "Kies speler";
+
+  if (state.playerLock.target) {
+    playerLockStatusText.textContent =
+      state.playerLock.lostFrames > 0 ? "Speler kwijt" : "Vergrendeld";
+    playerLockHint.textContent =
+      state.playerLock.lostFrames > 0
+        ? "Breng de gekozen speler opnieuw volledig in beeld of kies opnieuw."
+        : "Deze speler blijft het doel van de analyse zolang hij zichtbaar blijft.";
+    return;
+  }
+
+  playerLockStatusText.textContent = "Automatisch";
+  playerLockHint.textContent = "Kies een speler als er meerdere mensen in beeld staan.";
+}
+
+function getAutoPoseCandidate(candidates) {
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  return (
+    [...candidates]
+      .map((candidate) => {
+        const centerDistance = Math.hypot(
+          candidate.center.x - 0.5,
+          candidate.center.y - 0.48,
+        );
+        const centerScore = 1 - clamp(centerDistance / 0.72, 0, 1);
+        const sizeScore = clamp(candidate.bounds.height / 0.72, 0, 1);
+        const score =
+          candidate.visibility * 0.5 + sizeScore * 0.35 + centerScore * 0.15;
+
+        return { candidate, score };
+      })
+      .sort((a, b) => b.score - a.score)[0]?.candidate ?? null
+  );
+}
+
+function updateLockedPlayerTarget(candidate) {
+  if (!state.playerLock.target) {
+    state.playerLock.target = {
+      center: { ...candidate.center },
+      shoulderWidth: candidate.shoulderWidth,
+      torsoHeight: candidate.torsoHeight,
+    };
+    return;
+  }
+
+  state.playerLock.target.center.x +=
+    (candidate.center.x - state.playerLock.target.center.x) * 0.3;
+  state.playerLock.target.center.y +=
+    (candidate.center.y - state.playerLock.target.center.y) * 0.3;
+  state.playerLock.target.shoulderWidth +=
+    (candidate.shoulderWidth - state.playerLock.target.shoulderWidth) * 0.25;
+  state.playerLock.target.torsoHeight +=
+    (candidate.torsoHeight - state.playerLock.target.torsoHeight) * 0.25;
+}
+
+function lockOntoCandidate(candidate) {
+  resetPlayerLock(true);
+  state.playerLock.target = {
+    center: { ...candidate.center },
+    shoulderWidth: candidate.shoulderWidth,
+    torsoHeight: candidate.torsoHeight,
+  };
+  state.playerLock.lostFrames = 0;
+  state.playerLock.selectionMode = false;
+  updatePlayerLockUi();
+}
+
+function resolveSelectedCandidate(candidates) {
+  state.playerLock.candidates = candidates;
+
+  if (!state.playerLock.target) {
+    return getAutoPoseCandidate(candidates);
+  }
+
+  if (candidates.length === 0) {
+    state.playerLock.lostFrames += 1;
+    return null;
+  }
+
+  const ranked = candidates
+    .map((candidate) => {
+      const centerDistance = Math.hypot(
+        candidate.center.x - state.playerLock.target.center.x,
+        candidate.center.y - state.playerLock.target.center.y,
+      );
+      const shoulderDelta =
+        Math.abs(candidate.shoulderWidth - state.playerLock.target.shoulderWidth) /
+        Math.max(state.playerLock.target.shoulderWidth, 0.001);
+      const torsoDelta =
+        Math.abs(candidate.torsoHeight - state.playerLock.target.torsoHeight) /
+        Math.max(state.playerLock.target.torsoHeight, 0.001);
+      const score =
+        centerDistance * 2.6 +
+        shoulderDelta * 0.55 +
+        torsoDelta * 0.45 -
+        candidate.visibility * 0.2;
+
+      return {
+        candidate,
+        centerDistance,
+        shoulderDelta,
+        score,
+      };
+    })
+    .sort((a, b) => a.score - b.score);
+
+  const best = ranked[0];
+  if (
+    best &&
+    best.centerDistance <= 0.24 &&
+    best.shoulderDelta <= 0.7 &&
+    best.score <= 1.05
+  ) {
+    state.playerLock.lostFrames = 0;
+    updateLockedPlayerTarget(best.candidate);
+    return best.candidate;
+  }
+
+  state.playerLock.lostFrames += 1;
+  return null;
+}
+
+function drawPoseOutline(candidate, color, label, dashed = false) {
+  const x = candidate.bounds.minX * canvas.width;
+  const y = candidate.bounds.minY * canvas.height;
+  const width = candidate.bounds.width * canvas.width;
+  const height = candidate.bounds.height * canvas.height;
+
+  context.save();
+  context.strokeStyle = color;
+  context.lineWidth = label === "doelspeler" ? 4 : 2.5;
+  if (dashed) {
+    context.setLineDash([10, 8]);
+  }
+  drawRoundedRect(x - 10, y - 10, width + 20, height + 20, 20);
+  context.stroke();
+  drawLabel(
+    {
+      x: x + width / 2,
+      y: y + 4,
+    },
+    label,
+    color,
+  );
+  context.restore();
+}
+
+function renderPlayerSelectionOverlay(candidates, selectedCandidate) {
+  if (state.playerLock.selectionMode) {
+    candidates.forEach((candidate) => {
+      const isLockedCandidate =
+        selectedCandidate && candidate.id === selectedCandidate.id;
+      const selectedLabel = state.playerLock.target ? "doelspeler" : "voorstel";
+      drawPoseOutline(
+        candidate,
+        isLockedCandidate ? "rgba(67, 224, 179, 0.95)" : "rgba(125, 200, 255, 0.82)",
+        isLockedCandidate ? selectedLabel : "tik",
+        !isLockedCandidate,
+      );
+    });
+    return;
+  }
+
+  if (state.playerLock.target && selectedCandidate) {
+    drawPoseOutline(selectedCandidate, "rgba(67, 224, 179, 0.95)", "doelspeler");
+  }
+}
+
+function getNormalizedStagePoint(event) {
+  const rect = cameraStage.getBoundingClientRect();
+  if (!rect.width || !rect.height) {
+    return null;
+  }
+
+  const displayX = event.clientX - rect.left;
+  const displayY = event.clientY - rect.top;
+  return {
+    x: clamp(
+      (displayX - state.tracking.x) / (rect.width * Math.max(state.tracking.scale, 0.001)),
+      0,
+      1,
+    ),
+    y: clamp(
+      (displayY - state.tracking.y) / (rect.height * Math.max(state.tracking.scale, 0.001)),
+      0,
+      1,
+    ),
+  };
+}
+
+function pickCandidateFromPoint(point, candidates) {
+  const insideCandidates = candidates.filter(
+    (candidate) =>
+      point.x >= candidate.bounds.minX &&
+      point.x <= candidate.bounds.maxX &&
+      point.y >= candidate.bounds.minY &&
+      point.y <= candidate.bounds.maxY,
+  );
+
+  const pool = insideCandidates.length > 0 ? insideCandidates : candidates;
+  return (
+    [...pool]
+      .map((candidate) => ({
+        candidate,
+        distance: Math.hypot(candidate.center.x - point.x, candidate.center.y - point.y),
+      }))
+      .sort((a, b) => a.distance - b.distance)[0]?.candidate ?? null
+  );
+}
+
+function armPlayerSelectionMode() {
+  if (!state.running) {
+    renderFeedback([
+      "Start eerst de camera.",
+      "Daarna kun je een speler kiezen om vast te volgen.",
+      "De app blijft daarna niet meer naar een andere speler springen.",
+    ]);
+    return;
+  }
+
+  state.playerLock.selectionMode = !state.playerLock.selectionMode;
+  updatePlayerLockUi();
+
+  if (state.playerLock.selectionMode) {
+    setStatus("Tik op de speler die je wilt volgen");
+    trackingText.textContent = "Tik op de doelspeler";
+    renderFeedback([
+      "Tik op de speler die je wilt volgen.",
+      "De app vergrendelt daarna op die speler.",
+      "Tijdens de sessie blijft hij bij die speler zolang die zichtbaar blijft.",
+    ]);
+    return;
+  }
+
+  setStatus(state.playerLock.target ? "Doelspeler blijft vergrendeld" : "Live analyse actief");
+}
+
+function handlePlayerSelectionClick(event) {
+  if (!state.playerLock.selectionMode) {
+    return;
+  }
+
+  const point = getNormalizedStagePoint(event);
+  if (!point || state.playerLock.candidates.length === 0) {
+    return;
+  }
+
+  const candidate = pickCandidateFromPoint(point, state.playerLock.candidates);
+  if (!candidate) {
+    return;
+  }
+
+  lockOntoCandidate(candidate);
+  setStatus("Doelspeler vergrendeld");
+  trackingText.textContent = "Doelspeler vergrendeld";
+  renderFeedback([
+    "De gekozen speler is nu vergrendeld.",
+    "De analyse blijft deze speler volgen zolang hij zichtbaar blijft.",
+    "Tik opnieuw op Kies andere speler als je wilt wisselen.",
+  ]);
 }
 
 function getSessionTopIssue(sessionData = state.session) {
@@ -1727,6 +2083,7 @@ function updateRecordingUi() {
 
 function refreshSessionUi() {
   syncSessionButtons();
+  updatePlayerLockUi();
   renderSessionSummary();
   renderSessionStats();
   renderSessionSignals();
@@ -1986,7 +2343,7 @@ async function createPoseLandmarker() {
       modelAssetPath:
         "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
     },
-    numPoses: 1,
+    numPoses: 4,
     runningMode: "VIDEO",
   });
 
@@ -2025,6 +2382,8 @@ async function startCamera() {
     state.previousDominantWrist = null;
     state.history = [];
     state.strokeCandidate = null;
+    state.playerLock.candidates = [];
+    state.playerLock.lostFrames = 0;
 
     stopButton.disabled = false;
     switchButton.disabled = false;
@@ -2032,6 +2391,7 @@ async function startCamera() {
     trackingText.textContent = "Spelertracking wacht op lichaamspunten";
     syncSessionButtons();
     updateRecordingUi();
+    updatePlayerLockUi();
     state.animationFrameId = requestAnimationFrame(analyseLoop);
   } catch (error) {
     console.error(error);
@@ -2072,8 +2432,10 @@ function stopCamera() {
   state.history = [];
   state.previousDominantWrist = null;
   state.strokeCandidate = null;
+  resetPlayerLock();
   resetReadinessUi();
   resetLiveDashboard();
+  updatePlayerLockUi();
   refreshSessionUi();
 }
 
@@ -2082,6 +2444,8 @@ async function switchCamera() {
     stopRecording();
   }
 
+  resetPlayerLock();
+  updatePlayerLockUi();
   state.facingMode = state.facingMode === "environment" ? "user" : "environment";
   if (state.running) {
     await startCamera();
@@ -2110,42 +2474,87 @@ function analyseLoop(now) {
     resizeCanvasToVideo();
 
     const result = state.poseLandmarker.detectForVideo(video, now);
-    const landmarks = result.landmarks?.[0];
+    const candidates =
+      result.landmarks
+        ?.map((landmarks, index) => createPoseCandidate(landmarks, index))
+        .filter(
+          (candidate) => candidate.visibility >= 0.42 && candidate.bounds.height >= 0.22,
+        ) ?? [];
+    const selectedCandidate = resolveSelectedCandidate(candidates);
     context.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (landmarks) {
-      const smoothed = smoothLandmarks(landmarks);
+    if (selectedCandidate) {
+      const smoothed = smoothLandmarks(selectedCandidate.landmarks);
       const metrics = computeMetrics(smoothed);
       const readiness = computeReadiness(smoothed);
       const stroke = classifyStroke(metrics, handednessSelect.value, now);
       const technique = evaluateTechnique(stroke.name, metrics, handednessSelect.value);
 
       drawSkeleton(smoothed, metrics.joints, stroke.name);
+      renderPlayerSelectionOverlay(candidates, selectedCandidate);
       updateTrackingTransform(smoothed);
       renderReadinessUi(readiness);
       updateLiveDashboard(stroke.name, stroke.confidence, technique);
       maybeRegisterStroke(stroke, technique, now);
 
-      trackingText.textContent =
-        stroke.name === "Ready positie"
-          ? "Speler gevolgd, wacht op duidelijke slagbeweging"
-          : "Speler gevolgd en slag herkend";
+      if (state.playerLock.selectionMode) {
+        trackingText.textContent = state.playerLock.target
+          ? "Kies nieuwe doelspeler"
+          : "Voorstel in beeld, tik om te bevestigen";
+      } else if (state.playerLock.target) {
+        trackingText.textContent =
+          stroke.name === "Ready positie"
+            ? "Doelspeler gevolgd, wacht op slag"
+            : "Doelspeler gevolgd en slag herkend";
+      } else {
+        trackingText.textContent =
+          stroke.name === "Ready positie"
+            ? "Speler gevolgd, wacht op duidelijke slagbeweging"
+            : "Speler gevolgd en slag herkend";
+      }
     } else {
+      state.smoothedLandmarks = null;
+      state.previousDominantWrist = null;
+      state.strokeCandidate = null;
       state.tracking = { x: 0, y: 0, scale: 1 };
       trackingLayer.style.transform = "translate(0px, 0px) scale(1)";
-      trackingText.textContent = "Geen speler gedetecteerd";
-      detectionHeadline.textContent = "Zoek speler";
-      detectionDetail.textContent =
-        "Zorg dat schouders, heupen en knieen in beeld blijven voor een stabiele analyse.";
       focusValue.textContent = trackingToggle.checked ? "Zoekt speler" : "Uit";
+
+      if (candidates.length > 0 && state.playerLock.selectionMode) {
+        renderPlayerSelectionOverlay(candidates, null);
+        trackingText.textContent = "Tik op de speler die je wilt volgen";
+        detectionHeadline.textContent = "Kies speler";
+        detectionDetail.textContent = "Tik op de speler die je deze sessie wilt blijven volgen.";
+        renderFeedback([
+          "Er zijn meerdere spelers in beeld.",
+          "Tik op de speler die jij wilt volgen.",
+          "Daarna blijft de analyse op die speler vergrendeld.",
+        ]);
+      } else if (state.playerLock.target) {
+        trackingText.textContent = "Gekozen speler tijdelijk kwijt";
+        detectionHeadline.textContent = "Doelspeler kwijt";
+        detectionDetail.textContent =
+          "Breng de gekozen speler opnieuw vrij in beeld of kies opnieuw.";
+        renderFeedback([
+          "De gekozen speler is even uit beeld of slecht zichtbaar.",
+          "De app schakelt niet automatisch naar een andere speler.",
+          "Breng de doelspeler terug in beeld of kies opnieuw.",
+        ]);
+      } else {
+        trackingText.textContent = "Geen speler gedetecteerd";
+        detectionHeadline.textContent = "Zoek speler";
+        detectionDetail.textContent =
+          "Zorg dat schouders, heupen en knieen in beeld blijven voor een stabiele analyse.";
+        renderFeedback([
+          "Geen speler gedetecteerd. Houd schouders, heupen en knieen volledig in beeld.",
+          state.session.active
+            ? "De sessie loopt door, maar zonder duidelijke pose worden er geen slagen geteld."
+            : "Start een sessie zodra de speler stabiel in beeld staat.",
+          "Gebruik bij voorkeur de achtercamera voor een scherper silhouet.",
+        ]);
+      }
+
       resetReadinessUi();
-      renderFeedback([
-        "Geen speler gedetecteerd. Houd schouders, heupen en knieen volledig in beeld.",
-        state.session.active
-          ? "De sessie loopt door, maar zonder duidelijke pose worden er geen slagen geteld."
-          : "Start een sessie zodra de speler stabiel in beeld staat.",
-        "Gebruik bij voorkeur de achtercamera voor een scherper silhouet.",
-      ]);
     }
   }
 
@@ -2167,6 +2576,7 @@ function registerEvents() {
   switchButton.addEventListener("click", switchCamera);
   sessionStartButton.addEventListener("click", startSession);
   sessionStopButton.addEventListener("click", () => endSession("manual"));
+  selectPlayerButton.addEventListener("click", armPlayerSelectionMode);
   recordButton.addEventListener("click", handleRecordButton);
   downloadButton.addEventListener("click", downloadRecording);
   exportSessionButton.addEventListener("click", exportSessionReport);
@@ -2191,6 +2601,7 @@ function registerEvents() {
     focusValue.textContent = trackingToggle.checked ? "Automatisch" : "Uit";
   });
 
+  cameraStage.addEventListener("click", handlePlayerSelectionClick);
   window.addEventListener("resize", resizeCanvasToVideo);
   window.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {

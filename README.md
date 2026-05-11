@@ -4,6 +4,7 @@ Mobiele webapp voor live padel analyse met:
 
 - cameratoegang vanaf je telefoon
 - spelertracking met automatische focus
+- spelerkeuze met vergrendeling zodat dezelfde speler de hele sessie gevolgd blijft
 - skeletlijnen over schouders, armen, heupen en benen
 - biomechanische techniekanalyse als interne basis voor scoring en coaching
 - heuristische herkenning van `forehand`, `backhand`, `volley` en `overhead / smash`

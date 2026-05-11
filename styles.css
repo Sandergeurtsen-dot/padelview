@@ -173,6 +173,7 @@ h1 {
 .tracking-layer {
   position: absolute;
   inset: 0;
+  transform-origin: top left;
   transition: transform 120ms linear;
 }
 
@@ -309,6 +310,19 @@ h1 {
 
 .settings-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.selection-status {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.9rem 1rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.selection-status strong {
+  font-size: 1.02rem;
 }
 
 .control {
